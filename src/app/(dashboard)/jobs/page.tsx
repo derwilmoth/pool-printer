@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,11 +52,8 @@ interface Pagination {
   totalPages: number;
 }
 
-function formatCents(cents: number): string {
-  return (cents / 100).toFixed(2) + " €";
-}
-
 export default function JobsPage() {
+  const { t, formatCurrency, formatDateTime } = useI18n();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -108,13 +106,13 @@ export default function JobsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Transaction cancelled and refunded");
+        toast.success(t("toast.cancelRefundSuccess"));
         fetchTransactions(pagination.page);
       } else {
-        toast.error(data.error || "Failed to cancel transaction");
+        toast.error(data.error || t("toast.cancelRefundFailed"));
       }
     } catch {
-      toast.error("Failed to cancel transaction");
+      toast.error(t("toast.cancelRefundFailed"));
     }
   };
 
@@ -136,20 +134,29 @@ export default function JobsPage() {
   const typeLabel = (type: string) => {
     switch (type) {
       case "deposit":
-        return "Deposit";
+        return t("type.deposit");
       case "print_sw":
-        return "Print (B&W)";
+        return t("type.print_sw");
       case "print_color":
-        return "Print (Color)";
+        return t("type.print_color");
       default:
         return type;
     }
   };
 
+  const statusLabel = (status: string) => {
+    const key = `status.${status}` as
+      | "status.completed"
+      | "status.pending"
+      | "status.refunded"
+      | "status.failed";
+    return t(key);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Print Jobs & Transactions</h1>
+        <h1 className="text-3xl font-bold">{t("jobs.title")}</h1>
         <Button
           variant="outline"
           size="icon"
@@ -164,7 +171,7 @@ export default function JobsPage() {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by User ID..."
+            placeholder={t("jobs.filterPlaceholder")}
             value={filterUserId}
             onChange={(e) => setFilterUserId(e.target.value)}
             className="pl-10"
@@ -172,25 +179,25 @@ export default function JobsPage() {
         </div>
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Type" />
+            <SelectValue placeholder={t("common.type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="deposit">Deposit</SelectItem>
-            <SelectItem value="print_sw">Print (B&W)</SelectItem>
-            <SelectItem value="print_color">Print (Color)</SelectItem>
+            <SelectItem value="all">{t("jobs.allTypes")}</SelectItem>
+            <SelectItem value="deposit">{t("type.deposit")}</SelectItem>
+            <SelectItem value="print_sw">{t("type.print_sw")}</SelectItem>
+            <SelectItem value="print_color">{t("type.print_color")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("common.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="refunded">Refunded</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="all">{t("jobs.allStatus")}</SelectItem>
+            <SelectItem value="pending">{t("status.pending")}</SelectItem>
+            <SelectItem value="completed">{t("status.completed")}</SelectItem>
+            <SelectItem value="refunded">{t("status.refunded")}</SelectItem>
+            <SelectItem value="failed">{t("status.failed")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -200,14 +207,14 @@ export default function JobsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Pages</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="w-[50px]">Actions</TableHead>
+              <TableHead>{t("common.id")}</TableHead>
+              <TableHead>{t("common.user")}</TableHead>
+              <TableHead>{t("common.type")}</TableHead>
+              <TableHead>{t("common.amount")}</TableHead>
+              <TableHead>{t("common.pages")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead>{t("common.date")}</TableHead>
+              <TableHead className="w-[50px]">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,7 +224,7 @@ export default function JobsPage() {
                   colSpan={8}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  Loading...
+                  {t("common.loading")}
                 </TableCell>
               </TableRow>
             ) : transactions.length === 0 ? (
@@ -226,7 +233,7 @@ export default function JobsPage() {
                   colSpan={8}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  No transactions found.
+                  {t("jobs.noTransactions")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -242,7 +249,7 @@ export default function JobsPage() {
                   <TableCell className="font-mono text-sm">{tx.id}</TableCell>
                   <TableCell className="font-medium">{tx.userId}</TableCell>
                   <TableCell>{typeLabel(tx.type)}</TableCell>
-                  <TableCell>{formatCents(tx.amount)}</TableCell>
+                  <TableCell>{formatCurrency(tx.amount)}</TableCell>
                   <TableCell>{tx.pages || "-"}</TableCell>
                   <TableCell>
                     <Badge
@@ -254,11 +261,11 @@ export default function JobsPage() {
                           | "destructive"
                       }
                     >
-                      {tx.status}
+                      {statusLabel(tx.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {new Date(tx.timestamp).toLocaleString()}
+                    {formatDateTime(tx.timestamp)}
                   </TableCell>
                   <TableCell>
                     {tx.status === "pending" && (
@@ -273,7 +280,7 @@ export default function JobsPage() {
                             onClick={() => handleCancelRefund(tx.id)}
                             className="text-destructive"
                           >
-                            Cancel & Refund
+                            {t("jobs.cancelRefund")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -290,8 +297,11 @@ export default function JobsPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages} (
-            {pagination.total} total)
+            {t("jobs.pageOf", {
+              page: pagination.page,
+              totalPages: pagination.totalPages,
+              total: pagination.total,
+            })}
           </p>
           <div className="flex gap-2">
             <Button

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,18 +25,15 @@ interface Stats {
   timeframe: string;
 }
 
-const timeframes = [
-  { value: "24h", label: "24h" },
-  { value: "1w", label: "1 Week" },
-  { value: "1m", label: "1 Month" },
-  { value: "1y", label: "1 Year" },
+const timeframeKeys: { value: string; labelKey: TranslationKey }[] = [
+  { value: "24h", labelKey: "dashboard.24h" },
+  { value: "1w", labelKey: "dashboard.1w" },
+  { value: "1m", labelKey: "dashboard.1m" },
+  { value: "1y", labelKey: "dashboard.1y" },
 ];
 
-function formatCents(cents: number): string {
-  return (cents / 100).toFixed(2) + " €";
-}
-
 export default function DashboardPage() {
+  const { t, formatCurrency } = useI18n();
   const [stats, setStats] = useState<Stats | null>(null);
   const [timeframe, setTimeframe] = useState("24h");
   const [loading, setLoading] = useState(true);
@@ -59,14 +58,14 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t("dashboard.title")}</h1>
       </div>
 
       <Tabs value={timeframe} onValueChange={setTimeframe}>
         <TabsList>
-          {timeframes.map((tf) => (
+          {timeframeKeys.map((tf) => (
             <TabsTrigger key={tf.value} value={tf.value}>
-              {tf.label}
+              {t(tf.labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -90,7 +89,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Total Print Jobs
+                {t("dashboard.totalPrintJobs")}
               </CardTitle>
               <Printer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -102,7 +101,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Total Pages Printed
+                {t("dashboard.totalPagesPrinted")}
               </CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -113,7 +112,9 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">B&W Pages</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {t("dashboard.bwPages")}
+              </CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -123,7 +124,9 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Color Pages</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {t("dashboard.colorPages")}
+              </CardTitle>
               <Palette className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -134,35 +137,37 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Print Revenue
+                {t("dashboard.printRevenue")}
               </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCents(stats.totalRevenue)}
+                {formatCurrency(stats.totalRevenue)}
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Deposits</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {t("dashboard.deposits")}
+              </CardTitle>
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCents(stats.totalDepositAmount)}
+                {formatCurrency(stats.totalDepositAmount)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 <TrendingUp className="inline h-3 w-3 mr-1" />
-                {stats.totalDeposits} transactions
+                {stats.totalDeposits} {t("dashboard.transactions")}
               </p>
             </CardContent>
           </Card>
         </div>
       ) : (
-        <p className="text-muted-foreground">Failed to load statistics.</p>
+        <p className="text-muted-foreground">{t("dashboard.failedToLoad")}</p>
       )}
     </div>
   );

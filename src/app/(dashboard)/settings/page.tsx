@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,7 @@ interface Supervisor {
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const { t, formatCurrency } = useI18n();
   const [priceBw, setPriceBw] = useState("");
   const [priceColor, setPriceColor] = useState("");
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
@@ -76,7 +78,7 @@ export default function SettingsPage() {
     const bw = parseInt(priceBw, 10);
     const color = parseInt(priceColor, 10);
     if (isNaN(bw) || isNaN(color) || bw < 0 || color < 0) {
-      toast.error("Prices must be non-negative integers (in cents).");
+      toast.error(t("toast.pricesInvalid"));
       return;
     }
     setSavingPrices(true);
@@ -90,12 +92,12 @@ export default function SettingsPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Prices updated successfully");
+        toast.success(t("toast.pricesUpdated"));
       } else {
-        toast.error("Failed to update prices");
+        toast.error(t("toast.pricesFailed"));
       }
     } catch {
-      toast.error("Failed to update prices");
+      toast.error(t("toast.pricesFailed"));
     } finally {
       setSavingPrices(false);
     }
@@ -103,7 +105,7 @@ export default function SettingsPage() {
 
   const handleAddSupervisor = async () => {
     if (!newUsername.trim() || !newPassword.trim()) {
-      toast.error("Username and password are required");
+      toast.error(t("toast.usernamePasswordRequired"));
       return;
     }
     try {
@@ -117,22 +119,22 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Supervisor ${newUsername} created`);
+        toast.success(t("toast.supervisorCreated", { name: newUsername }));
         setNewUsername("");
         setNewPassword("");
         setAddDialogOpen(false);
         fetchSupervisors();
       } else {
-        toast.error(data.error || "Failed to create supervisor");
+        toast.error(data.error || t("toast.supervisorCreateFailed"));
       }
     } catch {
-      toast.error("Failed to create supervisor");
+      toast.error(t("toast.supervisorCreateFailed"));
     }
   };
 
   const handleDeleteSupervisor = async (supervisor: Supervisor) => {
     if (supervisor.username === session?.user?.name) {
-      toast.error("You cannot delete your own account");
+      toast.error(t("toast.cannotDeleteSelf"));
       return;
     }
     try {
@@ -143,31 +145,33 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Supervisor ${supervisor.username} deleted`);
+        toast.success(
+          t("toast.supervisorDeleted", { name: supervisor.username }),
+        );
         fetchSupervisors();
       } else {
-        toast.error(data.error || "Failed to delete supervisor");
+        toast.error(data.error || t("toast.supervisorDeleteFailed"));
       }
     } catch {
-      toast.error("Failed to delete supervisor");
+      toast.error(t("toast.supervisorDeleteFailed"));
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Settings</h1>
+      <h1 className="text-3xl font-bold">{t("settings.title")}</h1>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Print Prices */}
         <Card>
           <CardHeader>
-            <CardTitle>Print Prices</CardTitle>
-            <CardDescription>Set the price per page in cents.</CardDescription>
+            <CardTitle>{t("settings.printPrices")}</CardTitle>
+            <CardDescription>{t("settings.priceDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="priceBw">B&W Price (cents/page)</Label>
+                <Label htmlFor="priceBw">{t("settings.bwPrice")}</Label>
                 <Input
                   id="priceBw"
                   type="number"
@@ -176,12 +180,12 @@ export default function SettingsPage() {
                   onChange={(e) => setPriceBw(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Current: {priceBw} ct ={" "}
-                  {(parseInt(priceBw || "0", 10) / 100).toFixed(2)} €
+                  {t("settings.current")}: {priceBw} ct ={" "}
+                  {formatCurrency(parseInt(priceBw || "0", 10))}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="priceColor">Color Price (cents/page)</Label>
+                <Label htmlFor="priceColor">{t("settings.colorPrice")}</Label>
                 <Input
                   id="priceColor"
                   type="number"
@@ -190,13 +194,13 @@ export default function SettingsPage() {
                   onChange={(e) => setPriceColor(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Current: {priceColor} ct ={" "}
-                  {(parseInt(priceColor || "0", 10) / 100).toFixed(2)} €
+                  {t("settings.current")}: {priceColor} ct ={" "}
+                  {formatCurrency(parseInt(priceColor || "0", 10))}
                 </p>
               </div>
             </div>
             <Button onClick={handleSavePrices} disabled={savingPrices}>
-              <Save className="h-4 w-4 mr-2" /> Save Prices
+              <Save className="h-4 w-4 mr-2" /> {t("settings.savePrices")}
             </Button>
           </CardContent>
         </Card>
@@ -207,41 +211,44 @@ export default function SettingsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Supervisors</CardTitle>
-              <CardDescription>Manage supervisor accounts.</CardDescription>
+              <CardTitle>{t("settings.supervisors")}</CardTitle>
+              <CardDescription>
+                {t("settings.manageSupervisors")}
+              </CardDescription>
             </div>
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" /> Add Supervisor
+                  <Plus className="h-4 w-4 mr-2" />{" "}
+                  {t("settings.addSupervisor")}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Add Supervisor</DialogTitle>
+                  <DialogTitle>{t("settings.addSupervisor")}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="supUsername">Username</Label>
+                    <Label htmlFor="supUsername">{t("common.username")}</Label>
                     <Input
                       id="supUsername"
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="Username"
+                      placeholder={t("common.username")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="supPassword">Password</Label>
+                    <Label htmlFor="supPassword">{t("common.password")}</Label>
                     <Input
                       id="supPassword"
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Password"
+                      placeholder={t("common.password")}
                     />
                   </div>
                   <Button onClick={handleAddSupervisor} className="w-full">
-                    Create Supervisor
+                    {t("settings.createSupervisor")}
                   </Button>
                 </div>
               </DialogContent>
@@ -251,8 +258,10 @@ export default function SettingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Username</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead>{t("common.username")}</TableHead>
+                  <TableHead className="w-[80px]">
+                    {t("common.actions")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -269,8 +278,8 @@ export default function SettingsPage() {
                         disabled={sup.username === session?.user?.name}
                         title={
                           sup.username === session?.user?.name
-                            ? "Cannot delete yourself"
-                            : "Delete supervisor"
+                            ? t("settings.cannotDeleteSelf")
+                            : t("settings.deleteSupervisor")
                         }
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
