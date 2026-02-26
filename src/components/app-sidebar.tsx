@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   Sidebar,
   SidebarContent,
@@ -34,6 +34,7 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <Sidebar>
@@ -62,7 +63,15 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t p-4 space-y-2">
+        {session?.user?.name && (
+          <p className="text-sm text-muted-foreground px-2 truncate">
+            Signed in as{" "}
+            <span className="font-medium text-foreground">
+              {session.user.name}
+            </span>
+          </p>
+        )}
         <Button
           variant="ghost"
           className="w-full justify-start gap-2"
