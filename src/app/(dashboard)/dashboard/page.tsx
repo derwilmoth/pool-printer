@@ -3,7 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Palette, Printer, DollarSign, PiggyBank, TrendingUp } from "lucide-react";
+import {
+  FileText,
+  Palette,
+  Printer,
+  DollarSign,
+  PiggyBank,
+  TrendingUp,
+} from "lucide-react";
 
 interface Stats {
   totalJobs: number;
@@ -82,7 +89,9 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Print Jobs</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Print Jobs
+              </CardTitle>
               <Printer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -92,7 +101,9 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pages Printed</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Pages Printed
+              </CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -122,11 +133,15 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Print Revenue</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Print Revenue
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCents(stats.totalRevenue)}</div>
+              <div className="text-2xl font-bold">
+                {formatCents(stats.totalRevenue)}
+              </div>
             </CardContent>
           </Card>
 
@@ -136,7 +151,9 @@ export default function DashboardPage() {
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCents(stats.totalDepositAmount)}</div>
+              <div className="text-2xl font-bold">
+                {formatCents(stats.totalDepositAmount)}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 <TrendingUp className="inline h-3 w-3 mr-1" />
                 {stats.totalDeposits} transactions
