@@ -52,10 +52,14 @@ db.exec(`
 console.log("Tables created.");
 
 // Seed root supervisor (only if not exists)
-const existingRoot = db.prepare("SELECT id FROM supervisors WHERE username = ?").get("root");
+const existingRoot = db
+  .prepare("SELECT id FROM supervisors WHERE username = ?")
+  .get("root");
 if (!existingRoot) {
   const hash = bcrypt.hashSync("root", 10);
-  db.prepare("INSERT INTO supervisors (username, password_hash) VALUES (?, ?)").run("root", hash);
+  db.prepare(
+    "INSERT INTO supervisors (username, password_hash) VALUES (?, ?)",
+  ).run("root", hash);
   console.log("Root supervisor created (username: root, password: root).");
 } else {
   console.log("Root supervisor already exists.");
@@ -63,7 +67,7 @@ if (!existingRoot) {
 
 // Seed default settings
 const upsertSetting = db.prepare(
-  "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING"
+  "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
 );
 upsertSetting.run("price_sw", "5");
 upsertSetting.run("price_color", "20");
