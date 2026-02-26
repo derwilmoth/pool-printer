@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,8 @@ function formatCents(cents: number): string {
 }
 
 export default function UsersPage() {
-  const { selectedUserId, setSelectedUserId } = useAppStore();
+  const { selectedUserId, setSelectedUserId, clearSelectedUserId } =
+    useAppStore();
   const [searchQuery, setSearchQuery] = useState(selectedUserId || "");
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -285,71 +286,81 @@ export default function UsersPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* User List */}
-        <div className="lg:col-span-1 space-y-2 max-h-[600px] overflow-auto">
-          {users.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No users found.</p>
-          ) : (
-            users.map((user) => (
-              <Card
-                key={user.userId}
-                className={`cursor-pointer transition-colors hover:bg-accent ${
-                  selectedUser?.userId === user.userId ? "border-primary" : ""
-                }`}
-                onClick={() => selectUser(user)}
-              >
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{user.userId}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Balance: {formatCents(user.balance)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {user.is_free_account ? (
-                      <Badge variant="secondary">Free</Badge>
-                    ) : null}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFreeAccount(user);
-                      }}
-                      title={user.is_free_account ? "Make normal" : "Make free"}
-                    >
-                      {user.is_free_account ? (
-                        <UserX className="h-4 w-4" />
-                      ) : (
-                        <UserCheck className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+      {/* User Cards Grid */}
+      {users.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No users found.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {users.map((user) => (
+            <Card
+              key={user.userId}
+              className="cursor-pointer transition-colors hover:bg-accent"
+              onClick={() => selectUser(user)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium truncate">{user.userId}</p>
+                  {user.is_free_account ? (
+                    <Badge variant="secondary">Free</Badge>
+                  ) : null}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Balance: {formatCents(user.balance)}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      )}
 
-        {/* Selected User Details */}
-        <div className="lg:col-span-2 space-y-4">
-          {selectedUser ? (
+      {/* User Detail Dialog */}
+      <Dialog
+        open={!!selectedUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedUser(null);
+            setDepositAmount("");
+            clearSelectedUserId();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {selectedUser && (
             <>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{selectedUser.userId}</span>
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between pr-6">
+                  <span>{selectedUser.userId}</span>
+                  {selectedUser.is_free_account ? (
+                    <Badge variant="secondary">Free Account</Badge>
+                  ) : (
+                    <Badge>Balance: {formatCents(selectedUser.balance)}</Badge>
+                  )}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 pt-2">
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleFreeAccount(selectedUser)}
+                  >
                     {selectedUser.is_free_account ? (
-                      <Badge variant="secondary">Free Account</Badge>
+                      <>
+                        <UserX className="h-4 w-4 mr-2" /> Make Normal
+                      </>
                     ) : (
-                      <Badge>
-                        Balance: {formatCents(selectedUser.balance)}
-                      </Badge>
+                      <>
+                        <UserCheck className="h-4 w-4 mr-2" /> Make Free
+                      </>
                     )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </Button>
+                </div>
+
+                {/* Deposit */}
+                <div className="space-y-2">
+                  <Label>Add Deposit</Label>
                   <div className="flex gap-2">
                     <Input
                       type="number"
@@ -366,14 +377,11 @@ export default function UsersPage() {
                       <DollarSign className="h-4 w-4 mr-2" /> Deposit
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Recent Transactions</CardTitle>
-                </CardHeader>
-                <CardContent>
+                {/* Recent Transactions */}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Recent Transactions</h3>
                   {userTransactions.length === 0 ? (
                     <p className="text-muted-foreground text-sm">
                       No transactions yet.
@@ -416,18 +424,12 @@ export default function UsersPage() {
                       </TableBody>
                     </Table>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </>
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                Select a user from the list to view details and make deposits.
-              </CardContent>
-            </Card>
           )}
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
