@@ -15,7 +15,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Printer } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  Printer,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
