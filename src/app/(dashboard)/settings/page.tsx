@@ -5,7 +5,13 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -78,7 +84,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ price_sw: String(bw), price_color: String(color) }),
+        body: JSON.stringify({
+          price_sw: String(bw),
+          price_color: String(color),
+        }),
       });
       if (res.ok) {
         toast.success("Prices updated successfully");
@@ -101,7 +110,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/supervisors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: newUsername.trim(), password: newPassword }),
+        body: JSON.stringify({
+          username: newUsername.trim(),
+          password: newPassword,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -163,7 +175,8 @@ export default function SettingsPage() {
                 onChange={(e) => setPriceBw(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Current: {priceBw} ct = {(parseInt(priceBw || "0", 10) / 100).toFixed(2)} €
+                Current: {priceBw} ct ={" "}
+                {(parseInt(priceBw || "0", 10) / 100).toFixed(2)} €
               </p>
             </div>
             <div className="space-y-2">
@@ -176,7 +189,8 @@ export default function SettingsPage() {
                 onChange={(e) => setPriceColor(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Current: {priceColor} ct = {(parseInt(priceColor || "0", 10) / 100).toFixed(2)} €
+                Current: {priceColor} ct ={" "}
+                {(parseInt(priceColor || "0", 10) / 100).toFixed(2)} €
               </p>
             </div>
           </div>

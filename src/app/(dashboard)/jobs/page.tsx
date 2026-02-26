@@ -26,7 +26,13 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MoreHorizontal, ChevronLeft, ChevronRight, Search, RefreshCw } from "lucide-react";
+import {
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  RefreshCw,
+} from "lucide-react";
 
 interface Transaction {
   id: number;
@@ -77,14 +83,16 @@ export default function JobsPage() {
         const res = await fetch(`/api/transactions?${params}`);
         const data = await res.json();
         setTransactions(data.transactions || []);
-        setPagination(data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
+        setPagination(
+          data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 },
+        );
       } catch (error) {
         console.error("Failed to fetch transactions:", error);
       } finally {
         setLoading(false);
       }
     },
-    [filterUserId, filterType, filterStatus, pagination.limit]
+    [filterUserId, filterType, filterStatus, pagination.limit],
   );
 
   useEffect(() => {
@@ -142,7 +150,11 @@ export default function JobsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Print Jobs & Transactions</h1>
-        <Button variant="outline" size="icon" onClick={() => fetchTransactions(pagination.page)}>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => fetchTransactions(pagination.page)}
+        >
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -201,13 +213,19 @@ export default function JobsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={8}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   Loading...
                 </TableCell>
               </TableRow>
             ) : transactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={8}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No transactions found.
                 </TableCell>
               </TableRow>
@@ -215,7 +233,11 @@ export default function JobsPage() {
               transactions.map((tx) => (
                 <TableRow
                   key={tx.id}
-                  className={tx.status === "pending" ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}
+                  className={
+                    tx.status === "pending"
+                      ? "bg-yellow-50 dark:bg-yellow-950/20"
+                      : ""
+                  }
                 >
                   <TableCell className="font-mono text-sm">{tx.id}</TableCell>
                   <TableCell className="font-medium">{tx.userId}</TableCell>
@@ -223,7 +245,15 @@ export default function JobsPage() {
                   <TableCell>{formatCents(tx.amount)}</TableCell>
                   <TableCell>{tx.pages || "-"}</TableCell>
                   <TableCell>
-                    <Badge variant={statusColor(tx.status) as "default" | "secondary" | "outline" | "destructive"}>
+                    <Badge
+                      variant={
+                        statusColor(tx.status) as
+                          | "default"
+                          | "secondary"
+                          | "outline"
+                          | "destructive"
+                      }
+                    >
                       {tx.status}
                     </Badge>
                   </TableCell>
@@ -260,7 +290,8 @@ export default function JobsPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            Page {pagination.page} of {pagination.totalPages} (
+            {pagination.total} total)
           </p>
           <div className="flex gap-2">
             <Button
