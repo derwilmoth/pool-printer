@@ -60,7 +60,9 @@ export default function UsersPage() {
   const searchUsers = useCallback(async (query?: string) => {
     try {
       const searchVal = query ?? "";
-      const url = searchVal ? `/api/users?search=${encodeURIComponent(searchVal)}` : "/api/users";
+      const url = searchVal
+        ? `/api/users?search=${encodeURIComponent(searchVal)}`
+        : "/api/users";
       const res = await fetch(url);
       const data = await res.json();
       setUsers(data);
@@ -71,7 +73,9 @@ export default function UsersPage() {
 
   const fetchUserTransactions = useCallback(async (userId: string) => {
     try {
-      const res = await fetch(`/api/transactions?userId=${encodeURIComponent(userId)}&limit=20`);
+      const res = await fetch(
+        `/api/transactions?userId=${encodeURIComponent(userId)}&limit=20`,
+      );
       const data = await res.json();
       setUserTransactions(data.transactions || []);
     } catch (error) {
@@ -89,7 +93,7 @@ export default function UsersPage() {
       setSelectedUserId(user.userId);
       fetchUserTransactions(user.userId);
     },
-    [setSelectedUserId, fetchUserTransactions]
+    [setSelectedUserId, fetchUserTransactions],
   );
 
   useEffect(() => {
@@ -113,11 +117,16 @@ export default function UsersPage() {
       const res = await fetch("/api/users/deposit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: selectedUser.userId, amount: amountCents }),
+        body: JSON.stringify({
+          userId: selectedUser.userId,
+          amount: amountCents,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Deposited ${formatCents(amountCents)} to ${selectedUser.userId}. New balance: ${formatCents(data.newBalance)}`);
+        toast.success(
+          `Deposited ${formatCents(amountCents)} to ${selectedUser.userId}. New balance: ${formatCents(data.newBalance)}`,
+        );
         setDepositAmount("");
         setSelectedUser({ ...selectedUser, balance: data.newBalance });
         fetchUserTransactions(selectedUser.userId);
@@ -142,7 +151,10 @@ export default function UsersPage() {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: newUserId.trim(), is_free_account: newUserIsFree }),
+        body: JSON.stringify({
+          userId: newUserId.trim(),
+          is_free_account: newUserIsFree,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -166,11 +178,14 @@ export default function UsersPage() {
       const res = await fetch("/api/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.userId, is_free_account: !user.is_free_account }),
+        body: JSON.stringify({
+          userId: user.userId,
+          is_free_account: !user.is_free_account,
+        }),
       });
       if (res.ok) {
         toast.success(
-          `${user.userId} is now ${user.is_free_account ? "a normal account" : "a free account"}`
+          `${user.userId} is now ${user.is_free_account ? "a normal account" : "a free account"}`,
         );
         searchUsers(searchQuery);
         if (selectedUser?.userId === user.userId) {
@@ -247,7 +262,11 @@ export default function UsersPage() {
                 />
                 <Label htmlFor="isFree">Free Supervisor Print Account</Label>
               </div>
-              <Button onClick={handleCreateUser} disabled={loading} className="w-full">
+              <Button
+                onClick={handleCreateUser}
+                disabled={loading}
+                className="w-full"
+              >
                 Create User
               </Button>
             </div>
@@ -324,7 +343,9 @@ export default function UsersPage() {
                     {selectedUser.is_free_account ? (
                       <Badge variant="secondary">Free Account</Badge>
                     ) : (
-                      <Badge>Balance: {formatCents(selectedUser.balance)}</Badge>
+                      <Badge>
+                        Balance: {formatCents(selectedUser.balance)}
+                      </Badge>
                     )}
                   </CardTitle>
                 </CardHeader>
@@ -338,7 +359,10 @@ export default function UsersPage() {
                       value={depositAmount}
                       onChange={(e) => setDepositAmount(e.target.value)}
                     />
-                    <Button onClick={handleDeposit} disabled={loading || !depositAmount}>
+                    <Button
+                      onClick={handleDeposit}
+                      disabled={loading || !depositAmount}
+                    >
                       <DollarSign className="h-4 w-4 mr-2" /> Deposit
                     </Button>
                   </div>
@@ -351,7 +375,9 @@ export default function UsersPage() {
                 </CardHeader>
                 <CardContent>
                   {userTransactions.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No transactions yet.</p>
+                    <p className="text-muted-foreground text-sm">
+                      No transactions yet.
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -370,11 +396,21 @@ export default function UsersPage() {
                             <TableCell>{formatCents(tx.amount)}</TableCell>
                             <TableCell>{tx.pages || "-"}</TableCell>
                             <TableCell>
-                              <Badge variant={statusColor(tx.status) as "default" | "secondary" | "outline" | "destructive"}>
+                              <Badge
+                                variant={
+                                  statusColor(tx.status) as
+                                    | "default"
+                                    | "secondary"
+                                    | "outline"
+                                    | "destructive"
+                                }
+                              >
                                 {tx.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm">{new Date(tx.timestamp).toLocaleString()}</TableCell>
+                            <TableCell className="text-sm">
+                              {new Date(tx.timestamp).toLocaleString()}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
