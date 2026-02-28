@@ -341,7 +341,7 @@ export default function UsersPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
           {selectedUser && (
             <>
               <DialogHeader>
@@ -414,42 +414,44 @@ export default function UsersPage() {
                       {t("users.noTransactions")}
                     </p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t("common.type")}</TableHead>
-                          <TableHead>{t("common.amount")}</TableHead>
-                          <TableHead>{t("common.pages")}</TableHead>
-                          <TableHead>{t("common.status")}</TableHead>
-                          <TableHead>{t("common.date")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {userTransactions.map((tx) => (
-                          <TableRow key={tx.id}>
-                            <TableCell>{typeLabel(tx.type)}</TableCell>
-                            <TableCell>{formatCurrency(tx.amount)}</TableCell>
-                            <TableCell>{tx.pages || "-"}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  statusColor(tx.status) as
-                                    | "default"
-                                    | "secondary"
-                                    | "outline"
-                                    | "destructive"
-                                }
-                              >
-                                {statusLabel(tx.status)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {formatDateTime(tx.timestamp)}
-                            </TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t("common.type")}</TableHead>
+                            <TableHead>{t("common.amount")}</TableHead>
+                            <TableHead>{t("common.pages")}</TableHead>
+                            <TableHead>{t("common.status")}</TableHead>
+                            <TableHead>{t("common.date")}</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {userTransactions.map((tx) => (
+                            <TableRow key={tx.id}>
+                              <TableCell>{typeLabel(tx.type)}</TableCell>
+                              <TableCell>{formatCurrency(tx.amount)}</TableCell>
+                              <TableCell>{tx.pages || "-"}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    statusColor(tx.status) as
+                                      | "default"
+                                      | "secondary"
+                                      | "outline"
+                                      | "destructive"
+                                  }
+                                >
+                                  {statusLabel(tx.status)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {formatDateTime(tx.timestamp)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               </div>
