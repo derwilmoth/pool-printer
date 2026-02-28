@@ -10,11 +10,11 @@
  *   or: node print-middleware/index.js (after compiling)
  *
  * Environment variables:
- *   API_URL    - Next.js API base URL (default: http://localhost:3000)
- *   API_KEY    - API key matching the Next.js backend
- *   POLL_INTERVAL - Polling interval in ms (default: 3000)
- *   PRINTER_SW - B&W printer name (default: PoolDrucker_SW)
- *   PRINTER_COLOR - Color printer name (default: PoolDrucker_Farbe)
+ *   NEXTAUTH_URL   - Next.js API base URL (default: http://localhost:3000)
+ *   API_KEY        - API key matching the Next.js backend
+ *   POLL_INTERVAL  - Polling interval in ms (default: 3000)
+ *   PRINTER_BW     - B&W printer name (default: PoolDrucker_SW)
+ *   PRINTER_COLOR  - Color printer name (default: PoolDrucker_Farbe)
  */
 
 import { exec } from "child_process";
@@ -23,10 +23,14 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 
 // Configuration
-const API_URL = process.env.API_URL || "http://localhost:3000";
-const API_KEY = process.env.API_KEY || "pool-printer-api-key-change-in-production";
+const API_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+const API_KEY = process.env.API_KEY;
+if (!API_KEY) {
+  console.error("ERROR: API_KEY environment variable is required.");
+  process.exit(1);
+}
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "3000", 10);
-const PRINTER_SW = process.env.PRINTER_SW || "PoolDrucker_SW";
+const PRINTER_BW = process.env.PRINTER_BW || "PoolDrucker_SW";
 const PRINTER_COLOR = process.env.PRINTER_COLOR || "PoolDrucker_Farbe";
 
 // In-memory tracking of active print jobs
@@ -77,7 +81,7 @@ function jobKey(printerName: string, jobId: number): string {
 
 async function getPausedJobs(): Promise<PrintJob[]> {
   try {
-    const cmd = `Get-PrintJob -PrinterName "${PRINTER_SW}", "${PRINTER_COLOR}" | Where-Object { $_.JobStatus -match "Paused" } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, JobStatus | ConvertTo-Json -Depth 3`;
+    const cmd = `Get-PrintJob -PrinterName "${PRINTER_BW}", "${PRINTER_COLOR}" | Where-Object { $_.JobStatus -match "Paused" } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, JobStatus | ConvertTo-Json -Depth 3`;
     const { stdout } = await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
 
     if (!stdout.trim()) return [];
@@ -247,7 +251,7 @@ async function poll(): Promise<void> {
 // Main entry point
 console.log("=== Print Middleware Starting ===");
 console.log(`API URL: ${API_URL}`);
-console.log(`Printers: ${PRINTER_SW}, ${PRINTER_COLOR}`);
+console.log(`Printers: ${PRINTER_BW}, ${PRINTER_COLOR}`);
 console.log(`Poll interval: ${POLL_INTERVAL}ms`);
 console.log("================================\n");
 
