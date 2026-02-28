@@ -6,8 +6,7 @@
  * and manages print job lifecycle.
  *
  * Usage:
- *   npx ts-node print-middleware/index.ts
- *   or: node print-middleware/index.js (after compiling)
+ *   npx tsx print-middleware/index.ts
  *
  * Environment variables:
  *   NEXTAUTH_URL   - Next.js API base URL (default: http://localhost:3000)

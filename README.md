@@ -178,7 +178,7 @@ Damit die Middleware Jobs abfangen kann, müssen die Drucker auf **"Angehalten"*
 In einem **separaten Terminal** (muss dauerhaft laufen):
 
 ```bash
-npx ts-node print-middleware/index.ts
+npx tsx print-middleware/index.ts
 ```
 
 Erwartete Ausgabe:
@@ -195,7 +195,7 @@ Um eigene Druckernamen und API-Key zu verwenden:
 
 ```bash
 # Windows PowerShell
-$env:API_KEY="mein-geheimer-key"; $env:PRINTER_BW="MeinDrucker"; npx ts-node print-middleware/index.ts
+$env:API_KEY="mein-geheimer-key"; $env:PRINTER_BW="MeinDrucker"; npx tsx print-middleware/index.ts
 
 # Oder mit .env-Datei (print-middleware/.env):
 # API_KEY=mein-geheimer-key
@@ -272,10 +272,10 @@ pool-printer/
 
 ## Verfügbare Scripts
 
-| Befehl                                  | Beschreibung                             |
-| --------------------------------------- | ---------------------------------------- |
-| `npm run dev`                           | Startet die Web-App im Entwicklungsmodus |
-| `npm run build`                         | Erstellt einen Produktions-Build         |
-| `npm start`                             | Startet den Produktions-Build            |
-| `npm run db:init`                       | Initialisiert die SQLite-Datenbank       |
-| `npx ts-node print-middleware/index.ts` | Startet die Print Middleware             |
+| Befehl                              | Beschreibung                             |
+| ----------------------------------- | ---------------------------------------- |
+| `npm run dev`                       | Startet die Web-App im Entwicklungsmodus |
+| `npm run build`                     | Erstellt einen Produktions-Build         |
+| `npm start`                         | Startet den Produktions-Build            |
+| `npm run db:init`                   | Initialisiert die SQLite-Datenbank       |
+| `npx tsx print-middleware/index.ts` | Startet die Print Middleware             |
