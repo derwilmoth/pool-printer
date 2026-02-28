@@ -38,9 +38,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, Clock } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Save,
+  Clock,
+  DollarSign,
+  ShieldCheck,
+} from "lucide-react";
 
 interface Supervisor {
   id: number;
@@ -205,7 +211,10 @@ export default function SettingsPage() {
         {/* Print Prices */}
         <Card>
           <CardHeader>
-            <CardTitle>{t("settings.printPrices")}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              {t("settings.printPrices")}
+            </CardTitle>
             <CardDescription>{t("settings.priceDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -245,8 +254,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Separator />
-
         {/* Session Timeout */}
         <Card>
           <CardHeader>
@@ -282,13 +289,14 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Separator />
-
         {/* Supervisors */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>{t("settings.supervisors")}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                {t("settings.supervisors")}
+              </CardTitle>
               <CardDescription>
                 {t("settings.manageSupervisors")}
               </CardDescription>

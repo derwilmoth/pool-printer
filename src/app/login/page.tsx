@@ -114,14 +114,14 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             {logoError ? (
-              <Printer className="h-12 w-12 text-primary" />
+              <Printer className="h-16 w-16 text-primary" />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-white p-2">
+              <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-white p-3">
                 <Image
                   src="/logo.svg"
                   alt="Logo"
-                  width={48}
-                  height={48}
+                  width={72}
+                  height={72}
                   className="h-full w-full object-contain"
                   onError={() => setLogoError(true)}
                 />
