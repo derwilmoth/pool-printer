@@ -77,6 +77,8 @@ const de = {
   "users.depositPlaceholder": "Betrag in € (z.B. 5,00)",
   "users.recentTransactions": "Letzte Transaktionen",
   "users.noTransactions": "Noch keine Transaktionen.",
+  "users.paymentCash": "Bar",
+  "users.paymentCard": "Karte",
 
   // Transaction types
   "type.deposit": "Einzahlung",

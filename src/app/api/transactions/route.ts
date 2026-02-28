@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     // Get transactions
     const transactions = db
       .prepare(
-        `SELECT t.id, t.userId, t.amount, t.pages, t.type, t.status, t.timestamp
+        `SELECT t.id, t.userId, t.amount, t.pages, t.type, t.status, t.paymentMethod, t.timestamp
          FROM transactions t
          ${whereClause}
          ORDER BY t.${safeSort} ${safeOrder}

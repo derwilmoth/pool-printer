@@ -79,6 +79,8 @@ const en: Record<TranslationKey, string> = {
   "users.depositPlaceholder": "Amount in € (e.g. 5.00)",
   "users.recentTransactions": "Recent Transactions",
   "users.noTransactions": "No transactions yet.",
+  "users.paymentCash": "Cash",
+  "users.paymentCard": "Card",
 
   // Transaction types
   "type.deposit": "Deposit",

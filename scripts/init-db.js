@@ -39,6 +39,7 @@ db.exec(`
     pages INTEGER NOT NULL DEFAULT 1,
     type TEXT NOT NULL CHECK(type IN ('deposit', 'print_sw', 'print_color')),
     status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'failed', 'refunded')),
+    paymentMethod TEXT DEFAULT NULL,
     timestamp DATETIME NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (userId) REFERENCES users(userId)
   );

@@ -59,12 +59,12 @@ function LogoIcon() {
   }
 
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white p-1">
+    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[oklch(0.9846_0.0017_247.8389)] p-1.5">
       <Image
         src="/logo.svg"
         alt="Logo"
-        width={36}
-        height={36}
+        width={48}
+        height={48}
         className="h-full w-full object-contain"
         onError={() => setImgError(true)}
       />

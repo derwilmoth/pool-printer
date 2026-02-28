@@ -45,6 +45,7 @@ interface Transaction {
   type: string;
   status: string;
   timestamp: string;
+  paymentMethod?: string | null;
 }
 
 interface Pagination {
