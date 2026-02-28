@@ -29,9 +29,10 @@ import {
   Moon,
   Monitor,
   Globe,
+  Timer,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 
 const navItems: {
   titleKey: TranslationKey;
@@ -72,11 +74,107 @@ function LogoIcon() {
   );
 }
 
+function useSessionTimer() {
+  const [timeoutMinutes, setTimeoutMinutes] = useState<number>(60);
+  const [secondsLeft, setSecondsLeft] = useState<number>(60 * 60);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deadlineRef = useRef<number>(Date.now() + 60 * 60 * 1000);
+
+  const resetTimer = useCallback((minutes: number) => {
+    if (minutes <= 0) {
+      // Disabled
+      deadlineRef.current = 0;
+      setSecondsLeft(0);
+      return;
+    }
+    deadlineRef.current = Date.now() + minutes * 60 * 1000;
+    setSecondsLeft(minutes * 60);
+  }, []);
+
+  // Fetch timeout setting on mount
+  useEffect(() => {
+    const fetchTimeout = async () => {
+      try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        const val = parseInt(data.session_timeout || "60", 10);
+        setTimeoutMinutes(val);
+        resetTimer(val);
+      } catch {
+        // Default 60 minutes
+        setTimeoutMinutes(60);
+        resetTimer(60);
+      }
+    };
+    fetchTimeout();
+  }, [resetTimer]);
+
+  // Listen for settings changes from the settings page
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const val = (e as CustomEvent).detail as number;
+      setTimeoutMinutes(val);
+      resetTimer(val);
+    };
+    window.addEventListener("session-timeout-changed", handler);
+    return () => window.removeEventListener("session-timeout-changed", handler);
+  }, [resetTimer]);
+
+  // Countdown interval
+  useEffect(() => {
+    if (timeoutMinutes <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.round((deadlineRef.current - Date.now()) / 1000),
+      );
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        signOut({ callbackUrl: "/login" });
+      }
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timeoutMinutes]);
+
+  // Reset timer on user activity
+  useEffect(() => {
+    if (timeoutMinutes <= 0) return;
+
+    const onActivity = () => {
+      deadlineRef.current = Date.now() + timeoutMinutes * 60 * 1000;
+    };
+
+    const events = ["mousedown", "keydown", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, onActivity));
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, onActivity));
+    };
+  }, [timeoutMinutes]);
+
+  const isDisabled = timeoutMinutes <= 0;
+
+  return { secondsLeft, isDisabled };
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t, locale, setLocale } = useI18n();
   const { setTheme, theme } = useTheme();
+  const { secondsLeft, isDisabled } = useSessionTimer();
+
+  const formatTime = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
 
   return (
     <Sidebar>
@@ -176,14 +274,26 @@ export function AppSidebar() {
             </span>
           </p>
         )}
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-        >
-          <LogOut className="h-4 w-4" />
-          {t("nav.logout")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            className="flex-1 justify-start gap-2"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <LogOut className="h-4 w-4" />
+            {t("nav.logout")}
+          </Button>
+          {!isDisabled && (
+            <div className="flex items-center gap-1 pr-2" title={t("nav.sessionExpires")}>
+              <Timer className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span
+                className={`text-xs font-mono ${secondsLeft <= 60 ? "text-destructive font-semibold" : "text-muted-foreground"}`}
+              >
+                {formatTime(secondsLeft)}
+              </span>
+            </div>
+          )}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

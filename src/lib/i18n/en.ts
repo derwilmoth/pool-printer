@@ -122,6 +122,10 @@ const en: Record<TranslationKey, string> = {
   "settings.createSupervisor": "Create Supervisor",
   "settings.cannotDeleteSelf": "Cannot delete yourself",
   "settings.deleteSupervisor": "Delete supervisor",
+  "settings.sessionTimeout": "Session Timeout",
+  "settings.sessionTimeoutDescription": "Auto-logout after inactivity. 0 = disabled.",
+  "settings.sessionTimeoutMinutes": "Timeout (minutes)",
+  "settings.sessionTimeoutDisabled": "Auto-logout disabled",
 
   // Toast messages
   "toast.pricesUpdated": "Prices updated successfully",
@@ -152,6 +156,12 @@ const en: Record<TranslationKey, string> = {
   "toast.chargeFailed": "Charge failed",
   "toast.chargeInvalid": "Please enter a valid positive amount.",
   "toast.chargeInsufficientBalance": "Insufficient balance",
+  "toast.sessionTimeoutUpdated": "Session timeout updated",
+  "toast.sessionTimeoutFailed": "Failed to update session timeout",
+  "toast.sessionTimeoutInvalid": "Timeout must be a non-negative integer.",
+
+  // Session timer
+  "nav.sessionExpires": "Session expires in",
 };
 
 export default en;

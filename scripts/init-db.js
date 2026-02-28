@@ -73,7 +73,10 @@ const upsertSetting = db.prepare(
 );
 upsertSetting.run("price_sw", "5");
 upsertSetting.run("price_color", "20");
-console.log("Default settings ensured (price_sw: 5, price_color: 20).");
+upsertSetting.run("session_timeout", "60");
+console.log(
+  "Default settings ensured (price_sw: 5, price_color: 20, session_timeout: 60).",
+);
 
 db.close();
 console.log("Database initialized successfully!");

@@ -120,6 +120,10 @@ const de = {
   "settings.createSupervisor": "Supervisor erstellen",
   "settings.cannotDeleteSelf": "Eigenes Konto kann nicht gelöscht werden",
   "settings.deleteSupervisor": "Supervisor löschen",
+  "settings.sessionTimeout": "Sitzungs-Timeout",
+  "settings.sessionTimeoutDescription": "Automatische Abmeldung nach Inaktivität. 0 = deaktiviert.",
+  "settings.sessionTimeoutMinutes": "Timeout (Minuten)",
+  "settings.sessionTimeoutDisabled": "Automatische Abmeldung deaktiviert",
 
   // Toast messages
   "toast.pricesUpdated": "Preise erfolgreich aktualisiert",
@@ -150,6 +154,12 @@ const de = {
   "toast.chargeFailed": "Abbuchung fehlgeschlagen",
   "toast.chargeInvalid": "Bitte geben Sie einen gültigen positiven Betrag ein.",
   "toast.chargeInsufficientBalance": "Nicht genug Guthaben",
+  "toast.sessionTimeoutUpdated": "Sitzungs-Timeout aktualisiert",
+  "toast.sessionTimeoutFailed": "Fehler beim Aktualisieren des Sitzungs-Timeouts",
+  "toast.sessionTimeoutInvalid": "Timeout muss eine nicht-negative Ganzzahl sein.",
+
+  // Session timer
+  "nav.sessionExpires": "Sitzung endet in",
 } as const;
 
 export type TranslationKey = keyof typeof de;

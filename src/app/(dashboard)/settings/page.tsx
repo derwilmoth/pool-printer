@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, Clock } from "lucide-react";
 
 interface Supervisor {
   id: number;
@@ -47,6 +47,8 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
+  const [sessionTimeout, setSessionTimeout] = useState("");
+  const [savingTimeout, setSavingTimeout] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -54,6 +56,7 @@ export default function SettingsPage() {
       const data = await res.json();
       setPriceBw(data.price_sw || "5");
       setPriceColor(data.price_color || "20");
+      setSessionTimeout(data.session_timeout || "60");
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     }
@@ -100,6 +103,35 @@ export default function SettingsPage() {
       toast.error(t("toast.pricesFailed"));
     } finally {
       setSavingPrices(false);
+    }
+  };
+
+  const handleSaveTimeout = async () => {
+    const val = parseInt(sessionTimeout, 10);
+    if (isNaN(val) || val < 0) {
+      toast.error(t("toast.sessionTimeoutInvalid"));
+      return;
+    }
+    setSavingTimeout(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_timeout: String(val) }),
+      });
+      if (res.ok) {
+        toast.success(t("toast.sessionTimeoutUpdated"));
+        // Dispatch event so sidebar timer picks up the change
+        window.dispatchEvent(
+          new CustomEvent("session-timeout-changed", { detail: val }),
+        );
+      } else {
+        toast.error(t("toast.sessionTimeoutFailed"));
+      }
+    } catch {
+      toast.error(t("toast.sessionTimeoutFailed"));
+    } finally {
+      setSavingTimeout(false);
     }
   };
 
@@ -201,6 +233,43 @@ export default function SettingsPage() {
             </div>
             <Button onClick={handleSavePrices} disabled={savingPrices}>
               <Save className="h-4 w-4 mr-2" /> {t("settings.savePrices")}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Session Timeout */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              {t("settings.sessionTimeout")}
+            </CardTitle>
+            <CardDescription>
+              {t("settings.sessionTimeoutDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sessionTimeout">
+                {t("settings.sessionTimeoutMinutes")}
+              </Label>
+              <Input
+                id="sessionTimeout"
+                type="number"
+                min="0"
+                value={sessionTimeout}
+                onChange={(e) => setSessionTimeout(e.target.value)}
+              />
+              {parseInt(sessionTimeout || "0", 10) === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.sessionTimeoutDisabled")}
+                </p>
+              )}
+            </div>
+            <Button onClick={handleSaveTimeout} disabled={savingTimeout}>
+              <Save className="h-4 w-4 mr-2" /> {t("common.save")}
             </Button>
           </CardContent>
         </Card>
