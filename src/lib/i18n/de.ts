@@ -44,6 +44,9 @@ const de = {
   "login.invalidCredentials": "Ungültiger Benutzername oder Passwort",
   "login.signingIn": "Anmeldung...",
   "login.signIn": "Anmelden",
+  "login.defaultCredentialsTitle": "Standard-Anmeldedaten bei Erstinitialisierung",
+  "login.defaultCredentialsUser": "Benutzername: root",
+  "login.defaultCredentialsPass": "Passwort: root",
 
   // Dashboard
   "dashboard.title": "Dashboard",

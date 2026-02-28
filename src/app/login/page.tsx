@@ -21,7 +21,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Printer, Sun, Moon, Monitor, Globe } from "lucide-react";
+import { Printer, Sun, Moon, Monitor, Globe, Info } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +113,20 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Printer className="h-12 w-12 text-primary" />
+            {logoError ? (
+              <Printer className="h-12 w-12 text-primary" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-white p-2">
+                <Image
+                  src="/logo.svg"
+                  alt="Logo"
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              </div>
+            )}
           </div>
           <CardTitle className="text-2xl">{t("app.name")}</CardTitle>
           <CardDescription>{t("login.title")}</CardDescription>
@@ -147,6 +162,16 @@ export default function LoginPage() {
               {loading ? t("login.signingIn") : t("login.signIn")}
             </Button>
           </form>
+          <div className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              {t("login.defaultCredentialsTitle")}
+              <br />
+              {t("login.defaultCredentialsUser")}
+              <br />
+              {t("login.defaultCredentialsPass")}
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>

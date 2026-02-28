@@ -46,6 +46,9 @@ const en: Record<TranslationKey, string> = {
   "login.invalidCredentials": "Invalid username or password",
   "login.signingIn": "Signing in...",
   "login.signIn": "Sign In",
+  "login.defaultCredentialsTitle": "Default credentials on first initialization",
+  "login.defaultCredentialsUser": "Username: root",
+  "login.defaultCredentialsPass": "Password: root",
 
   // Dashboard
   "dashboard.title": "Dashboard",
