@@ -61,8 +61,8 @@ const labels: Record<
   }
 > = {
   de: {
-    title: "Beleg",
-    invoiceNr: "Beleg-Nr.",
+    title: "Pool Printer Beleg",
+    invoiceNr: "Nr.",
     date: "Datum",
     user: "Benutzer",
     type: "Typ",
@@ -94,8 +94,8 @@ const labels: Record<
     total: "Gesamt",
   },
   en: {
-    title: "Receipt",
-    invoiceNr: "Receipt No.",
+    title: "Pool Printer Receipt",
+    invoiceNr: "Nr.",
     date: "Date",
     user: "User",
     type: "Type",
@@ -194,19 +194,35 @@ export async function generateInvoicePDF(
   // --- Try to load logo ---
   let logoLoaded = false;
   try {
+    const res = await fetch("/logo.svg");
+    if (!res.ok) throw new Error("no logo");
+    const svgText = await res.text();
+
+    // Render SVG to canvas, then to image
+    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
     const img = new Image();
-    img.crossOrigin = "anonymous";
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = () => reject();
-      img.src = "/logo.png";
+      img.src = url;
     });
+
+    const canvas = document.createElement("canvas");
+    const scale = 4; // high-res
+    canvas.width = img.naturalWidth * scale;
+    canvas.height = img.naturalHeight * scale;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+
     // Draw logo top-left (max 18mm height, proportional width)
     const maxH = 18;
     const ratio = img.naturalWidth / img.naturalHeight;
     const logoH = maxH;
     const logoW = logoH * ratio;
-    doc.addImage(img, "PNG", margin, 14, logoW, logoH);
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", margin, 14, logoW, logoH);
     logoLoaded = true;
   } catch {
     // No logo available – continue without

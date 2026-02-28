@@ -21,7 +21,7 @@ Das System besteht aus **zwei Komponenten**:
 - 🛡️ **Aufsichts-Accounts** – Kostenloses Drucken, nicht in Statistiken erfasst
 - 🔙 **Auto-Refund** – Automatische Rückerstattung bei Druckerfehlern (+ manuelle Stornierung im Dashboard)
 - 🧾 **PDF-Belege** – Für jede Transaktion und jeden Druckauftrag als PDF herunterladbar (inkl. Firmendaten, Steuer & Logo)
-- 🎨 **Eigenes Logo** – `public/logo.png` ablegen → wird automatisch auf PDF-Belegen, in der Sidebar und als Favicon verwendet
+- 🎨 **Eigenes Logo** – `public/logo.svg` ablegen → wird automatisch auf PDF-Belegen, in der Sidebar und als Favicon verwendet
 - 🌍 **i18n** – Deutsch (Standard) & Englisch umschaltbar
 - 🌙 **Dark Mode** – Hell / Dunkel / System-Einstellung
 
@@ -101,13 +101,13 @@ Diese Werte erscheinen auf heruntergeladenen Belegen. Alle sind optional – ohn
 
 #### Logo
 
-Lege eine Datei **`public/logo.png`** im Projektordner ab. Sie wird automatisch verwendet als:
+Lege eine Datei **`public/logo.svg`** im Projektordner ab. Sie wird automatisch verwendet als:
 
 - **Favicon** im Browser-Tab
 - **Logo** in der Sidebar (anstelle des Drucker-Icons)
 - **Briefkopf** auf PDF-Belegen (oben links)
 
-Kein Env-Eintrag nötig – ohne `logo.png` wird ein Standard-Drucker-Icon angezeigt.
+Kein Env-Eintrag nötig – ohne `logo.svg` wird ein Standard-Drucker-Icon angezeigt.
 
 > ⚠️ **Wichtig:** `API_KEY` muss in **beiden** Konfigurationen (`.env.local` der Web-App und Middleware) den gleichen Wert haben!
 
@@ -270,7 +270,7 @@ Fehler? → Automatische Rückerstattung
 pool-printer/
 ├── .env.local                  # Umgebungsvariablen (Web-App)
 ├── public/
-│   └── logo.png                # Eigenes Logo (optional)
+│   └── logo.svg                # Eigenes Logo (optional)
 ├── data/
 │   └── pool-printer.db         # SQLite-Datenbank (nach db:init)
 ├── print-middleware/

@@ -24,3 +24,5 @@ npm-debug.log*
 # database
 /data/
 node_modules
+
+/public/logo.svg

@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   title: "Pool Printer - Print Management",
   description: "Print Management & Billing System",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo.svg",
+    apple: "/logo.svg",
   },
 };
 
