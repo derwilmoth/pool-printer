@@ -79,11 +79,16 @@ const de = {
   "users.noTransactions": "Noch keine Transaktionen.",
   "users.paymentCash": "Bar",
   "users.paymentCard": "Karte",
+  "users.manualCharge": "Manuelle Abbuchung",
+  "users.chargePlaceholder": "Betrag in €",
+  "users.chargeDescriptionPlaceholder": "Titel (z.B. Buch binden)",
+  "users.charge": "Abbuchen",
 
   // Transaction types
   "type.deposit": "Einzahlung",
   "type.print_sw": "Druck (S/W)",
   "type.print_color": "Druck (Farbe)",
+  "type.manual": "Manuell",
 
   // Transaction statuses
   "status.completed": "Abgeschlossen",
@@ -136,6 +141,10 @@ const de = {
   "toast.userUpdateFailed": "Fehler beim Aktualisieren des Benutzers",
   "toast.cancelRefundSuccess": "Transaktion storniert und erstattet",
   "toast.cancelRefundFailed": "Fehler beim Stornieren der Transaktion",
+  "toast.chargeSuccess": "{amount} von {userId} abgebucht. Neues Guthaben: {balance}",
+  "toast.chargeFailed": "Abbuchung fehlgeschlagen",
+  "toast.chargeInvalid": "Bitte geben Sie einen gültigen positiven Betrag ein.",
+  "toast.chargeInsufficientBalance": "Nicht genug Guthaben",
 } as const;
 
 export type TranslationKey = keyof typeof de;

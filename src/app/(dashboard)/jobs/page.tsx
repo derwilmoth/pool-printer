@@ -46,6 +46,7 @@ interface Transaction {
   status: string;
   timestamp: string;
   paymentMethod?: string | null;
+  description?: string | null;
 }
 
 interface Pagination {
@@ -142,6 +143,8 @@ export default function JobsPage() {
         return t("type.print_sw");
       case "print_color":
         return t("type.print_color");
+      case "manual":
+        return t("type.manual");
       default:
         return type;
     }
@@ -189,6 +192,7 @@ export default function JobsPage() {
             <SelectItem value="deposit">{t("type.deposit")}</SelectItem>
             <SelectItem value="print_sw">{t("type.print_sw")}</SelectItem>
             <SelectItem value="print_color">{t("type.print_color")}</SelectItem>
+            <SelectItem value="manual">{t("type.manual")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -251,7 +255,11 @@ export default function JobsPage() {
                 >
                   <TableCell className="font-mono text-sm">{tx.id}</TableCell>
                   <TableCell className="font-medium">{tx.userId}</TableCell>
-                  <TableCell>{typeLabel(tx.type)}</TableCell>
+                  <TableCell>
+                    {tx.type === "manual" && tx.description
+                      ? `${typeLabel(tx.type)}: ${tx.description}`
+                      : typeLabel(tx.type)}
+                  </TableCell>
                   <TableCell>{formatCurrency(tx.amount)}</TableCell>
                   <TableCell>{tx.pages || "-"}</TableCell>
                   <TableCell>

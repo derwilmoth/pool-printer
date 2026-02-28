@@ -81,11 +81,16 @@ const en: Record<TranslationKey, string> = {
   "users.noTransactions": "No transactions yet.",
   "users.paymentCash": "Cash",
   "users.paymentCard": "Card",
+  "users.manualCharge": "Manual Charge",
+  "users.chargePlaceholder": "Amount in €",
+  "users.chargeDescriptionPlaceholder": "Title (e.g. Book binding)",
+  "users.charge": "Charge",
 
   // Transaction types
   "type.deposit": "Deposit",
   "type.print_sw": "Print (B&W)",
   "type.print_color": "Print (Color)",
+  "type.manual": "Manual",
 
   // Transaction statuses
   "status.completed": "Completed",
@@ -138,6 +143,10 @@ const en: Record<TranslationKey, string> = {
   "toast.userUpdateFailed": "Failed to update user",
   "toast.cancelRefundSuccess": "Transaction cancelled and refunded",
   "toast.cancelRefundFailed": "Failed to cancel transaction",
+  "toast.chargeSuccess": "Charged {amount} from {userId}. New balance: {balance}",
+  "toast.chargeFailed": "Charge failed",
+  "toast.chargeInvalid": "Please enter a valid positive amount.",
+  "toast.chargeInsufficientBalance": "Insufficient balance",
 };
 
 export default en;

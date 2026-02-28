@@ -9,6 +9,7 @@ interface InvoiceData {
   type: string;
   status: string;
   paymentMethod?: string | null;
+  description?: string | null;
   timestamp: string;
 }
 
@@ -56,6 +57,7 @@ const labels: Record<
     descriptionDepositCard: string;
     descriptionPrintBw: string;
     descriptionPrintColor: string;
+    descriptionManual: string;
     itemLabel: string;
     unitPrice: string;
     quantity: string;
@@ -91,6 +93,7 @@ const labels: Record<
     descriptionDepositCard: "Guthabenaufladung – Kartenzahlung",
     descriptionPrintBw: "Druckauftrag – Schwarz/Weiß",
     descriptionPrintColor: "Druckauftrag – Farbe",
+    descriptionManual: "Manuelle Abbuchung",
     itemLabel: "Position",
     unitPrice: "Einzelpreis",
     quantity: "Menge",
@@ -125,6 +128,7 @@ const labels: Record<
     descriptionDepositCard: "Account top-up – Card payment",
     descriptionPrintBw: "Print job – Black & White",
     descriptionPrintColor: "Print job – Color",
+    descriptionManual: "Manual charge",
     itemLabel: "Item",
     unitPrice: "Unit price",
     quantity: "Qty",
@@ -163,6 +167,8 @@ function getTypeLabel(type: string, l: (typeof labels)[Locale]): string {
       return l.printBw;
     case "print_color":
       return l.printColor;
+    case "manual":
+      return l.descriptionManual;
     default:
       return type;
   }
@@ -334,6 +340,9 @@ export async function generateInvoicePDF(
       break;
     case "print_color":
       descriptionText = l.descriptionPrintColor;
+      break;
+    case "manual":
+      descriptionText = tx.description || l.descriptionManual;
       break;
     default:
       descriptionText = tx.type;

@@ -30,6 +30,7 @@ import {
   UserCheck,
   UserX,
   Download,
+  MinusCircle,
 } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
 import { useAppStore } from "@/lib/useAppStore";
@@ -48,6 +49,7 @@ interface Transaction {
   type: string;
   status: string;
   paymentMethod?: string | null;
+  description?: string | null;
   timestamp: string;
 }
 
@@ -65,6 +67,8 @@ export default function UsersPage() {
   const [newUserIsFree, setNewUserIsFree] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [chargeDescription, setChargeDescription] = useState("");
 
   const searchUsers = useCallback(async (query?: string) => {
     try {
@@ -155,6 +159,48 @@ export default function UsersPage() {
     }
   };
 
+  const handleCharge = async () => {
+    if (!selectedUser || !chargeAmount || !chargeDescription.trim()) return;
+    const amountCents = Math.round(parseFloat(chargeAmount) * 100);
+    if (isNaN(amountCents) || amountCents <= 0) {
+      toast.error(t("toast.chargeInvalid"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/users/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser.userId,
+          amount: amountCents,
+          description: chargeDescription.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(
+          t("toast.chargeSuccess", {
+            amount: formatCurrency(amountCents),
+            userId: selectedUser.userId,
+            balance: formatCurrency(data.newBalance),
+          }),
+        );
+        setChargeAmount("");
+        setChargeDescription("");
+        setSelectedUser({ ...selectedUser, balance: data.newBalance });
+        fetchUserTransactions(selectedUser.userId);
+        searchUsers(searchQuery);
+      } else {
+        toast.error(data.error || t("toast.chargeFailed"));
+      }
+    } catch {
+      toast.error(t("toast.chargeFailed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateUser = async () => {
     if (!newUserId.trim()) {
       toast.error(t("toast.userIdRequired"));
@@ -239,6 +285,8 @@ export default function UsersPage() {
         return t("type.print_sw");
       case "print_color":
         return t("type.print_color");
+      case "manual":
+        return t("type.manual");
       default:
         return type;
     }
@@ -431,6 +479,36 @@ export default function UsersPage() {
                   </div>
                 </div>
 
+                {/* Manual Charge */}
+                <div className="space-y-2">
+                  <Label>{t("users.manualCharge")}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("users.chargeDescriptionPlaceholder")}
+                      value={chargeDescription}
+                      onChange={(e) => setChargeDescription(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder={t("users.chargePlaceholder")}
+                      value={chargeAmount}
+                      onChange={(e) => setChargeAmount(e.target.value)}
+                      className="w-40 shrink-0"
+                    />
+                    <Button
+                      onClick={handleCharge}
+                      disabled={loading || !chargeAmount || !chargeDescription}
+                      variant="destructive"
+                      className="shrink-0"
+                    >
+                      <MinusCircle className="h-4 w-4 mr-2" />{" "}
+                      {t("users.charge")}
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Recent Transactions */}
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm">
@@ -456,7 +534,11 @@ export default function UsersPage() {
                         <TableBody>
                           {userTransactions.map((tx) => (
                             <TableRow key={tx.id}>
-                              <TableCell>{typeLabel(tx.type)}</TableCell>
+                              <TableCell>
+                                {tx.type === "manual" && tx.description
+                                  ? `${typeLabel(tx.type)}: ${tx.description}`
+                                  : typeLabel(tx.type)}
+                              </TableCell>
                               <TableCell>{formatCurrency(tx.amount)}</TableCell>
                               <TableCell>{tx.pages || "-"}</TableCell>
                               <TableCell>
