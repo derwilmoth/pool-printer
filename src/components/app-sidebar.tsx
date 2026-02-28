@@ -30,6 +30,8 @@ import {
   Monitor,
   Globe,
 } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -49,6 +51,25 @@ const navItems: {
   { titleKey: "nav.settings", href: "/settings", icon: Settings },
 ];
 
+function LogoIcon() {
+  const [imgError, setImgError] = useState(false);
+
+  if (imgError) {
+    return <Printer className="h-6 w-6 text-primary" />;
+  }
+
+  return (
+    <Image
+      src="/logo.png"
+      alt="Logo"
+      width={24}
+      height={24}
+      className="h-6 w-6 object-contain"
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -59,7 +80,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b px-6 py-4">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Printer className="h-6 w-6 text-primary" />
+          <LogoIcon />
           <span className="text-lg font-bold">{t("app.name")}</span>
         </Link>
       </SidebarHeader>

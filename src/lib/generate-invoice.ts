@@ -50,6 +50,14 @@ const labels: Record<
     taxIdLabel: string;
     phone: string;
     email: string;
+    descriptionLabel: string;
+    descriptionDeposit: string;
+    descriptionPrintBw: string;
+    descriptionPrintColor: string;
+    itemLabel: string;
+    unitPrice: string;
+    quantity: string;
+    total: string;
   }
 > = {
   de: {
@@ -76,6 +84,14 @@ const labels: Record<
     taxIdLabel: "Steuer-Nr.",
     phone: "Tel.",
     email: "E-Mail",
+    descriptionLabel: "Beschreibung",
+    descriptionDeposit: "Guthabenaufladung – Barzahlung",
+    descriptionPrintBw: "Druckauftrag – Schwarz/Weiß",
+    descriptionPrintColor: "Druckauftrag – Farbe",
+    itemLabel: "Position",
+    unitPrice: "Einzelpreis",
+    quantity: "Menge",
+    total: "Gesamt",
   },
   en: {
     title: "Receipt",
@@ -101,6 +117,14 @@ const labels: Record<
     taxIdLabel: "Tax ID",
     phone: "Phone",
     email: "Email",
+    descriptionLabel: "Description",
+    descriptionDeposit: "Account top-up – Cash payment",
+    descriptionPrintBw: "Print job – Black & White",
+    descriptionPrintColor: "Print job – Color",
+    itemLabel: "Item",
+    unitPrice: "Unit price",
+    quantity: "Qty",
+    total: "Total",
   },
 };
 
@@ -155,7 +179,10 @@ function getStatusLabel(status: string, l: (typeof labels)[Locale]): string {
   }
 }
 
-export function generateInvoicePDF(tx: InvoiceData, locale: Locale): void {
+export async function generateInvoicePDF(
+  tx: InvoiceData,
+  locale: Locale,
+): Promise<void> {
   const l = labels[locale];
   const cfg = getInvoiceConfig();
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -164,8 +191,29 @@ export function generateInvoicePDF(tx: InvoiceData, locale: Locale): void {
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
+  // --- Try to load logo ---
+  let logoLoaded = false;
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject();
+      img.src = "/logo.png";
+    });
+    // Draw logo top-left (max 18mm height, proportional width)
+    const maxH = 18;
+    const ratio = img.naturalWidth / img.naturalHeight;
+    const logoH = maxH;
+    const logoW = logoH * ratio;
+    doc.addImage(img, "PNG", margin, 14, logoW, logoH);
+    logoLoaded = true;
+  } catch {
+    // No logo available – continue without
+  }
+
   // --- Company Header (top-right) ---
-  let headerY = 20;
+  let headerY = 18;
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
@@ -180,7 +228,6 @@ export function generateInvoicePDF(tx: InvoiceData, locale: Locale): void {
   doc.setTextColor(100, 100, 100);
 
   if (cfg.companyAddress) {
-    // Support multi-line address via "|" separator
     const addressLines = cfg.companyAddress.split("|").map((s) => s.trim());
     for (const line of addressLines) {
       doc.text(line, pageWidth - margin, headerY, { align: "right" });
@@ -209,108 +256,181 @@ export function generateInvoicePDF(tx: InvoiceData, locale: Locale): void {
     headerY += 4;
   }
 
-  // --- Title (top-left) ---
+  // --- Title + Invoice Nr (below logo or top-left) ---
+  const titleX = logoLoaded ? margin + 50 : margin;
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
-  doc.text(l.title, margin, 30);
+  doc.text(l.title, titleX, 28);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(120, 120, 120);
-  doc.text(`${l.invoiceNr} ${tx.id}`, margin, 37);
+  doc.text(`${l.invoiceNr} ${tx.id}`, titleX, 35);
 
   // --- Separator ---
-  const separatorY = Math.max(headerY + 2, 44);
+  const separatorY = Math.max(headerY + 2, 42);
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);
   doc.line(margin, separatorY, pageWidth - margin, separatorY);
 
-  // --- Details ---
-  let y = separatorY + 12;
-  const lineHeight = 10;
+  // --- Receipt metadata (left side) ---
+  let y = separatorY + 10;
+  const lineHeight = 7;
 
   const drawRow = (label: string, value: string) => {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(80, 80, 80);
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.text(label, margin, y);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(30, 30, 30);
-    doc.text(value, margin + 50, y);
+    doc.text(value, margin + 45, y);
 
     y += lineHeight;
   };
 
-  drawRow(l.invoiceNr, String(tx.id));
   drawRow(l.date, formatDateTime(tx.timestamp, locale));
   drawRow(l.user, tx.userId);
-  drawRow(l.type, getTypeLabel(tx.type, l));
   drawRow(l.status, getStatusLabel(tx.status, l));
 
-  if (tx.pages && tx.pages > 0) {
-    drawRow(l.pages, String(tx.pages));
+  // --- Description section ---
+  y += 6;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(30, 30, 30);
+  doc.text(l.descriptionLabel, margin, y);
+  y += 3;
+
+  // Description text
+  let descriptionText: string;
+  switch (tx.type) {
+    case "deposit":
+      descriptionText = l.descriptionDeposit;
+      break;
+    case "print_sw":
+      descriptionText = l.descriptionPrintBw;
+      break;
+    case "print_color":
+      descriptionText = l.descriptionPrintColor;
+      break;
+    default:
+      descriptionText = tx.type;
   }
 
-  // --- Amount section ---
-  y += 5;
+  // --- Items table ---
+  y += 4;
+  const colItem = margin;
+  const colQty = margin + 100;
+  const colUnitPrice = margin + 120;
+  const colTotal = pageWidth - margin;
+
+  // Table header
+  doc.setFillColor(240, 240, 245);
+  doc.setDrawColor(200, 200, 200);
+  doc.roundedRect(margin, y - 4, contentWidth, 8, 1, 1, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  doc.text(l.itemLabel, colItem + 3, y);
+  if (tx.type !== "deposit") {
+    doc.text(l.quantity, colQty, y);
+    doc.text(l.unitPrice, colUnitPrice, y);
+  }
+  doc.text(l.total, colTotal - 3, y, { align: "right" });
+
+  y += 10;
+
+  // Table row
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  doc.text(descriptionText, colItem + 3, y);
+
   const absCents = Math.abs(tx.amount);
 
+  if (tx.type !== "deposit" && tx.pages && tx.pages > 0) {
+    doc.text(String(tx.pages), colQty, y);
+    const pricePerPage = absCents / tx.pages;
+    doc.text(
+      formatCurrency(Math.round(pricePerPage), locale, cfg.currency),
+      colUnitPrice,
+      y,
+    );
+  }
+  doc.text(formatCurrency(absCents, locale, cfg.currency), colTotal - 3, y, {
+    align: "right",
+  });
+
+  y += 4;
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  // --- Totals section ---
+  y += 8;
+
   if (cfg.taxRate > 0) {
-    // With tax: show net, tax, gross
     const netCents = Math.round(absCents / (1 + cfg.taxRate / 100));
     const taxCents = absCents - netCents;
 
     // Net
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(80, 80, 80);
-    doc.text(l.netAmount, margin + 5, y);
+    doc.text(l.netAmount, colUnitPrice, y);
     doc.setTextColor(30, 30, 30);
-    doc.text(formatCurrency(netCents, locale, cfg.currency), pageWidth - margin - 5, y, {
-      align: "right",
-    });
-    y += 7;
+    doc.text(
+      formatCurrency(netCents, locale, cfg.currency),
+      colTotal - 3,
+      y,
+      { align: "right" },
+    );
+    y += 6;
 
     // Tax
     doc.setTextColor(80, 80, 80);
-    doc.text(`${l.tax} (${cfg.taxRate}%)`, margin + 5, y);
+    doc.text(`${l.tax} (${cfg.taxRate}%)`, colUnitPrice, y);
     doc.setTextColor(30, 30, 30);
-    doc.text(formatCurrency(taxCents, locale, cfg.currency), pageWidth - margin - 5, y, {
-      align: "right",
-    });
-    y += 7;
+    doc.text(
+      formatCurrency(taxCents, locale, cfg.currency),
+      colTotal - 3,
+      y,
+      { align: "right" },
+    );
+    y += 8;
 
     // Gross (highlighted)
     doc.setDrawColor(200, 200, 200);
     doc.setFillColor(245, 245, 250);
-    doc.roundedRect(margin, y - 5, contentWidth, 14, 2, 2, "FD");
+    doc.roundedRect(colUnitPrice - 5, y - 5, pageWidth - margin - colUnitPrice + 8, 12, 2, 2, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setTextColor(30, 30, 30);
-    doc.text(l.grossAmount, margin + 5, y + 4);
+    doc.text(l.grossAmount, colUnitPrice, y + 2);
     doc.text(
       formatCurrency(absCents, locale, cfg.currency),
-      pageWidth - margin - 5,
-      y + 4,
+      colTotal - 3,
+      y + 2,
       { align: "right" },
     );
   } else {
-    // Without tax: show single amount
+    // Without tax: single total
     doc.setDrawColor(200, 200, 200);
     doc.setFillColor(245, 245, 250);
-    doc.roundedRect(margin, y - 6, contentWidth, 14, 2, 2, "FD");
+    doc.roundedRect(colUnitPrice - 5, y - 5, pageWidth - margin - colUnitPrice + 8, 12, 2, 2, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setTextColor(30, 30, 30);
-    doc.text(l.amount, margin + 5, y + 3);
+    doc.text(l.amount, colUnitPrice, y + 2);
     doc.text(
       formatCurrency(absCents, locale, cfg.currency),
-      pageWidth - margin - 5,
-      y + 3,
+      colTotal - 3,
+      y + 2,
       { align: "right" },
     );
   }

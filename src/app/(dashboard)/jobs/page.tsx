@@ -274,7 +274,7 @@ export default function JobsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => generateInvoicePDF(tx, locale)}
+                        onClick={() => void generateInvoicePDF(tx, locale)}
                         title={t("common.downloadReceipt")}
                       >
                         <Download className="h-4 w-4" />
