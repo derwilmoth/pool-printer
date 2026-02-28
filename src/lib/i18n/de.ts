@@ -135,6 +135,7 @@ const de = {
   "toast.depositInvalid": "Bitte geben Sie einen gültigen positiven Betrag ein.",
   "toast.userCreated": "Benutzer {name} erstellt",
   "toast.userCreateFailed": "Fehler beim Erstellen des Benutzers",
+  "toast.userAlreadyExists": "Benutzer existiert bereits",
   "toast.userIdRequired": "Benutzer-ID ist erforderlich",
   "toast.userNowFree": "{userId} ist jetzt ein kostenloses Konto",
   "toast.userNowNormal": "{userId} ist jetzt ein normales Konto",

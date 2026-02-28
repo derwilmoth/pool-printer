@@ -125,7 +125,7 @@ export default function SettingsPage() {
         setAddDialogOpen(false);
         fetchSupervisors();
       } else {
-        toast.error(data.error || t("toast.supervisorCreateFailed"));
+        toast.error(t("toast.supervisorCreateFailed"));
       }
     } catch {
       toast.error(t("toast.supervisorCreateFailed"));
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         );
         fetchSupervisors();
       } else {
-        toast.error(data.error || t("toast.supervisorDeleteFailed"));
+        toast.error(t("toast.supervisorDeleteFailed"));
       }
     } catch {
       toast.error(t("toast.supervisorDeleteFailed"));

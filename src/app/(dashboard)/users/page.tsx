@@ -87,7 +87,7 @@ export default function UsersPage() {
   const fetchUserTransactions = useCallback(async (userId: string) => {
     try {
       const res = await fetch(
-        `/api/transactions?userId=${encodeURIComponent(userId)}&limit=20`,
+        `/api/transactions?userId=${encodeURIComponent(userId)}&exact=1&limit=20`,
       );
       const data = await res.json();
       setUserTransactions(data.transactions || []);
@@ -150,7 +150,7 @@ export default function UsersPage() {
         fetchUserTransactions(selectedUser.userId);
         searchUsers(searchQuery);
       } else {
-        toast.error(data.error || t("toast.depositFailed"));
+        toast.error(t("toast.depositFailed"));
       }
     } catch {
       toast.error(t("toast.depositFailed"));
@@ -191,8 +191,10 @@ export default function UsersPage() {
         setSelectedUser({ ...selectedUser, balance: data.newBalance });
         fetchUserTransactions(selectedUser.userId);
         searchUsers(searchQuery);
+      } else if (res.status === 400) {
+        toast.error(t("toast.chargeInsufficientBalance"));
       } else {
-        toast.error(data.error || t("toast.chargeFailed"));
+        toast.error(t("toast.chargeFailed"));
       }
     } catch {
       toast.error(t("toast.chargeFailed"));
@@ -216,15 +218,16 @@ export default function UsersPage() {
           is_free_account: newUserIsFree,
         }),
       });
-      const data = await res.json();
       if (res.ok) {
         toast.success(t("toast.userCreated", { name: newUserId }));
         setNewUserId("");
         setNewUserIsFree(false);
         setCreateDialogOpen(false);
         searchUsers(searchQuery);
+      } else if (res.status === 409) {
+        toast.error(t("toast.userAlreadyExists"));
       } else {
-        toast.error(data.error || t("toast.userCreateFailed"));
+        toast.error(t("toast.userCreateFailed"));
       }
     } catch {
       toast.error(t("toast.userCreateFailed"));

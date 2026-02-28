@@ -137,6 +137,7 @@ const en: Record<TranslationKey, string> = {
   "toast.depositInvalid": "Please enter a valid positive amount.",
   "toast.userCreated": "User {name} created",
   "toast.userCreateFailed": "Failed to create user",
+  "toast.userAlreadyExists": "User already exists",
   "toast.userIdRequired": "User ID is required",
   "toast.userNowFree": "{userId} is now a free account",
   "toast.userNowNormal": "{userId} is now a normal account",

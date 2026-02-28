@@ -20,8 +20,14 @@ export async function GET(request: Request) {
     const params: (string | number)[] = [];
 
     if (userId) {
-      conditions.push("t.userId LIKE ?");
-      params.push(`%${userId}%`);
+      const exact = searchParams.get("exact") === "1";
+      if (exact) {
+        conditions.push("t.userId = ?");
+        params.push(userId);
+      } else {
+        conditions.push("t.userId LIKE ?");
+        params.push(`%${userId}%`);
+      }
     }
 
     if (type) {

@@ -113,7 +113,7 @@ export default function JobsPage() {
         toast.success(t("toast.cancelRefundSuccess"));
         fetchTransactions(pagination.page);
       } else {
-        toast.error(data.error || t("toast.cancelRefundFailed"));
+        toast.error(t("toast.cancelRefundFailed"));
       }
     } catch {
       toast.error(t("toast.cancelRefundFailed"));
