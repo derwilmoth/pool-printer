@@ -59,14 +59,16 @@ function LogoIcon() {
   }
 
   return (
-    <Image
-      src="/logo.svg"
-      alt="Logo"
-      width={36}
-      height={36}
-      className="h-9 w-9 object-contain"
-      onError={() => setImgError(true)}
-    />
+    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white p-1">
+      <Image
+        src="/logo.svg"
+        alt="Logo"
+        width={36}
+        height={36}
+        className="h-full w-full object-contain"
+        onError={() => setImgError(true)}
+      />
+    </div>
   );
 }
 
