@@ -14,6 +14,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -70,6 +80,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeDescription, setChargeDescription] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const searchUsers = useCallback(async (query?: string) => {
     try {
@@ -267,7 +278,6 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm(t("toast.userDeleteConfirm", { userId }))) return;
     try {
       const res = await fetch("/api/users", {
         method: "DELETE",
@@ -467,10 +477,38 @@ export default function UsersPage() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeleteUser(selectedUser.userId)}
+                    onClick={() => setDeleteConfirmOpen(true)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" /> {t("users.deleteUser")}
                   </Button>
+                  <AlertDialog
+                    open={deleteConfirmOpen}
+                    onOpenChange={setDeleteConfirmOpen}
+                  >
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {t("users.deleteUser")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t("toast.userDeleteConfirm", {
+                            userId: selectedUser.userId,
+                          })}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          {t("common.cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleDeleteUser(selectedUser.userId)}
+                        >
+                          {t("common.confirm")}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
 
                 {/* Deposit */}

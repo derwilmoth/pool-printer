@@ -28,6 +28,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Clock } from "lucide-react";
@@ -49,6 +59,8 @@ export default function SettingsPage() {
   const [savingPrices, setSavingPrices] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState("");
   const [savingTimeout, setSavingTimeout] = useState(false);
+  const [deleteSupervisorTarget, setDeleteSupervisorTarget] =
+    useState<Supervisor | null>(null);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -165,10 +177,6 @@ export default function SettingsPage() {
   };
 
   const handleDeleteSupervisor = async (supervisor: Supervisor) => {
-    if (supervisor.username === session?.user?.name) {
-      toast.error(t("toast.cannotDeleteSelf"));
-      return;
-    }
     try {
       const res = await fetch("/api/supervisors", {
         method: "DELETE",
@@ -343,7 +351,13 @@ export default function SettingsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDeleteSupervisor(sup)}
+                        onClick={() => {
+                          if (sup.username === session?.user?.name) {
+                            toast.error(t("toast.cannotDeleteSelf"));
+                            return;
+                          }
+                          setDeleteSupervisorTarget(sup);
+                        }}
                         disabled={sup.username === session?.user?.name}
                         title={
                           sup.username === session?.user?.name
@@ -361,6 +375,41 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Supervisor Delete Confirmation */}
+      <AlertDialog
+        open={!!deleteSupervisorTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSupervisorTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("settings.deleteSupervisor")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteSupervisorTarget &&
+                t("settings.deleteSupervisorConfirm", {
+                  name: deleteSupervisorTarget.username,
+                })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteSupervisorTarget) {
+                  handleDeleteSupervisor(deleteSupervisorTarget);
+                }
+              }}
+            >
+              {t("common.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
