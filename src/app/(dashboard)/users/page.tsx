@@ -31,6 +31,7 @@ import {
   UserX,
   Download,
   MinusCircle,
+  Trash2,
 } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
 import { useAppStore } from "@/lib/useAppStore";
@@ -265,6 +266,27 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm(t("toast.userDeleteConfirm", { userId }))) return;
+    try {
+      const res = await fetch("/api/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (res.ok) {
+        toast.success(t("toast.userDeleted", { userId }));
+        setSelectedUser(null);
+        clearSelectedUserId();
+        searchUsers(searchQuery);
+      } else {
+        toast.error(t("toast.userDeleteFailed"));
+      }
+    } catch {
+      toast.error(t("toast.userDeleteFailed"));
+    }
+  };
+
   const statusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -441,6 +463,13 @@ export default function UsersPage() {
                         {t("users.makeFree")}
                       </>
                     )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteUser(selectedUser.userId)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> {t("users.deleteUser")}
                   </Button>
                 </div>
 

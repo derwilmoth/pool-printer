@@ -79,3 +79,32 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { userId } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    }
+
+    const db = getDb();
+
+    const user = db.prepare("SELECT userId FROM users WHERE userId = ?").get(userId);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const deleteUser = db.transaction(() => {
+      db.prepare("DELETE FROM transactions WHERE userId = ?").run(userId);
+      db.prepare("DELETE FROM users WHERE userId = ?").run(userId);
+    });
+
+    deleteUser();
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
+}
