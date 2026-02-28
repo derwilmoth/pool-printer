@@ -22,6 +22,7 @@ const en: Record<TranslationKey, string> = {
   "common.date": "Date",
   "common.user": "User",
   "common.id": "ID",
+  "common.downloadReceipt": "Download receipt",
 
   // Sidebar / Navigation
   "nav.navigation": "Navigation",

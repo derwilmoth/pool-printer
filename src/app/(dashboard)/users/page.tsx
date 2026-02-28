@@ -23,7 +23,15 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Plus, DollarSign, UserCheck, UserX } from "lucide-react";
+import {
+  Search,
+  Plus,
+  DollarSign,
+  UserCheck,
+  UserX,
+  Download,
+} from "lucide-react";
+import { generateInvoicePDF } from "@/lib/generate-invoice";
 import { useAppStore } from "@/lib/useAppStore";
 
 interface User {
@@ -43,7 +51,7 @@ interface Transaction {
 }
 
 export default function UsersPage() {
-  const { t, formatCurrency, formatDateTime } = useI18n();
+  const { t, locale, formatCurrency, formatDateTime } = useI18n();
   const { selectedUserId, setSelectedUserId, clearSelectedUserId } =
     useAppStore();
   const [searchQuery, setSearchQuery] = useState(selectedUserId || "");
@@ -423,6 +431,7 @@ export default function UsersPage() {
                             <TableHead>{t("common.pages")}</TableHead>
                             <TableHead>{t("common.status")}</TableHead>
                             <TableHead>{t("common.date")}</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -446,6 +455,16 @@ export default function UsersPage() {
                               </TableCell>
                               <TableCell className="text-sm">
                                 {formatDateTime(tx.timestamp)}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => generateInvoicePDF(tx, locale)}
+                                  title={t("common.downloadReceipt")}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}

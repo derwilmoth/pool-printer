@@ -20,6 +20,7 @@ const de = {
   "common.date": "Datum",
   "common.user": "Benutzer",
   "common.id": "ID",
+  "common.downloadReceipt": "Beleg herunterladen",
 
   // Sidebar / Navigation
   "nav.navigation": "Navigation",

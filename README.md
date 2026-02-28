@@ -20,6 +20,7 @@ Das System besteht aus **zwei Komponenten**:
 - 📊 **Statistiken** – Umsatz, Seitenanzahl, Druckaufträge (24h / 1 Woche / 1 Monat / 1 Jahr)
 - 🛡️ **Aufsichts-Accounts** – Kostenloses Drucken, nicht in Statistiken erfasst
 - 🔙 **Auto-Refund** – Automatische Rückerstattung bei Druckerfehlern (+ manuelle Stornierung im Dashboard)
+- 🧾 **PDF-Belege** – Für jede Transaktion und jeden Druckauftrag als PDF herunterladbar (inkl. Firmendaten & Steuer)
 - 🌍 **i18n** – Deutsch (Standard) & Englisch umschaltbar
 - 🌙 **Dark Mode** – Hell / Dunkel / System-Einstellung
 
@@ -31,6 +32,7 @@ Das System besteht aus **zwei Komponenten**:
 | SQLite (better-sqlite3)           | Datenbank (Raw SQL, kein ORM) |
 | Tailwind CSS + shadcn/ui          | Styling & UI-Komponenten      |
 | Zustand                           | Client State Management       |
+| jsPDF                             | PDF-Beleg-Generierung         |
 | NextAuth (Credentials)            | Authentifizierung (JWT)       |
 | next-themes                       | Dark Mode                     |
 | Node.js + TypeScript + PowerShell | Print Middleware              |
@@ -81,6 +83,20 @@ Diese werden beim Starten der Middleware gesetzt (per Umgebungsvariable oder `.e
 | `POLL_INTERVAL` | Nein    | `3000`              | Abfrage-Intervall in Millisekunden. Wie oft der Print Spooler nach neuen Jobs geprüft wird. |
 | `PRINTER_BW`    | Nein    | `PoolDrucker_SW`    | Name des virtuellen S/W-Druckers in Windows.                                                |
 | `PRINTER_COLOR` | Nein    | `PoolDrucker_Farbe` | Name des virtuellen Farbdruckers in Windows.                                                |
+
+#### Umgebungsvariablen – PDF-Belege (Optional)
+
+Diese Werte erscheinen auf heruntergeladenen Belegen. Alle sind optional – ohne Angabe wird "Pool Printer" als Absender verwendet.
+
+| Variable                              | Standard | Beschreibung                                                                           |
+| ------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_INVOICE_COMPANY_NAME`    | –        | Firmen-/Organisationsname, z. B. `Uni Musterstadt – Copy Center`.                      |
+| `NEXT_PUBLIC_INVOICE_COMPANY_ADDRESS` | –        | Adresse. Mehrere Zeilen mit `\|` trennen, z. B. `Musterstraße 1 \| 12345 Musterstadt`. |
+| `NEXT_PUBLIC_INVOICE_COMPANY_PHONE`   | –        | Telefonnummer.                                                                         |
+| `NEXT_PUBLIC_INVOICE_COMPANY_EMAIL`   | –        | E-Mail-Adresse.                                                                        |
+| `NEXT_PUBLIC_INVOICE_TAX_ID`          | –        | Steuernummer oder USt-IdNr., z. B. `DE123456789`.                                      |
+| `NEXT_PUBLIC_INVOICE_TAX_RATE`        | `0`      | Steuersatz in % (z. B. `19`). Bei `0` wird keine Steuer auf dem Beleg ausgewiesen.     |
+| `NEXT_PUBLIC_INVOICE_CURRENCY`        | `EUR`    | Währung als ISO-4217-Code.                                                             |
 
 > ⚠️ **Wichtig:** `API_KEY` muss in **beiden** Konfigurationen (`.env.local` der Web-App und Middleware) den gleichen Wert haben!
 
@@ -261,6 +277,7 @@ pool-printer/
 │   │   └── ui/                 # shadcn/ui Komponenten
 │   ├── lib/
 │   │   ├── db.ts               # Datenbankverbindung
+│   │   ├── generate-invoice.ts # PDF-Beleg-Generierung
 │   │   ├── useAppStore.ts      # Zustand Store
 │   │   └── i18n/               # Übersetzungen (de/en)
 │   └── middleware.ts           # Auth & API-Key Middleware

@@ -33,7 +33,9 @@ import {
   ChevronRight,
   Search,
   RefreshCw,
+  Download,
 } from "lucide-react";
+import { generateInvoicePDF } from "@/lib/generate-invoice";
 
 interface Transaction {
   id: number;
@@ -53,7 +55,7 @@ interface Pagination {
 }
 
 export default function JobsPage() {
-  const { t, formatCurrency, formatDateTime } = useI18n();
+  const { t, locale, formatCurrency, formatDateTime } = useI18n();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -268,23 +270,33 @@ export default function JobsPage() {
                     {formatDateTime(tx.timestamp)}
                   </TableCell>
                   <TableCell>
-                    {tx.status === "pending" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleCancelRefund(tx.id)}
-                            className="text-destructive"
-                          >
-                            {t("jobs.cancelRefund")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => generateInvoicePDF(tx, locale)}
+                        title={t("common.downloadReceipt")}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      {tx.status === "pending" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleCancelRefund(tx.id)}
+                              className="text-destructive"
+                            >
+                              {t("jobs.cancelRefund")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
