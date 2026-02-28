@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pool Printer - Print Management",
-  description: "Print Management & Billing System",
+  title: "Pool Printer",
+  description: "Universität Mannheim Lehrpool-Druckersystem",
   icons: {
     icon: "/logo.svg",
     apple: "/logo.svg",
