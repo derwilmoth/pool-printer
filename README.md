@@ -298,6 +298,26 @@ npm run db:init
 npm run build
 ```
 
+```powershell
+# 4. **Drucker einrichten** (PowerShell als Admin):
+# Drucker auf die erwarteten Namen umbenennen
+Rename-Printer -Name "Dein SW-Drucker" -NewName "PoolDrucker_SW"
+Rename-Printer -Name "Dein Farbdrucker" -NewName "PoolDrucker_Farbe"
+
+# Drucker anhalten – PFLICHT, damit die Middleware Jobs abfangen kann!
+# → Systemsteuerung → Geräte und Drucker → Rechtsklick → Druckerwarteschlange
+# → Menü "Drucker" → "Drucker anhalten" ✅
+```
+
+> **Mehrere S/W-Drucker?** → Printer Pooling nutzen:
+>
+> 1. Einen Drucker auf `PoolDrucker_SW` umbenennen
+> 2. Rechtsklick → **Druckereigenschaften** → Tab **Anschlüsse**
+> 3. **☑ Druckerpool aktivieren** → beide Ports anhaken → OK
+> 4. Zweiten Drucker entfernen (`Remove-Printer -Name "Drucker 2"`)
+>
+> Windows verteilt Jobs automatisch auf den nächsten freien Drucker.
+
 ### Bei jedem Start (2 Terminals)
 
 ```bash
