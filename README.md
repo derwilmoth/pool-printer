@@ -279,3 +279,54 @@ pool-printer/
 | `npm start`                         | Startet den Produktions-Build            |
 | `npm run db:init`                   | Initialisiert die SQLite-Datenbank       |
 | `npx tsx print-middleware/index.ts` | Startet die Print Middleware             |
+
+---
+
+## Startklar in 5 Minuten
+
+### Einmalig (Ersteinrichtung)
+
+```bash
+# 1. Umgebungsvariablen anlegen
+cp .env.example .env.local
+# → .env.local öffnen und NEXTAUTH_SECRET + API_KEY eintragen
+
+# 2. Datenbank initialisieren
+npm run db:init
+
+# 3. Produktions-Build erstellen
+npm run build
+```
+
+### Bei jedem Start (2 Terminals)
+
+```bash
+# Terminal 1: Web-App starten
+npm start
+
+# Terminal 2: Print Middleware starten
+npx tsx print-middleware/index.ts
+```
+
+### Optional: Automatischer Start mit PM2
+
+[PM2](https://pm2.keymetrics.io/) startet beide Prozesse automatisch und startet sie bei Absturz neu.
+
+```bash
+# PM2 global installieren (einmalig)
+npm install -g pm2
+
+# Beide Prozesse starten
+pm2 start npm --name "pool-printer-web" -- start
+pm2 start npx --name "pool-printer-middleware" -- tsx print-middleware/index.ts
+
+# Beim Systemstart automatisch starten (Windows: pm2-startup)
+pm2 save
+pm2 startup
+
+# Status prüfen
+pm2 status
+
+# Logs anzeigen
+pm2 logs
+```
