@@ -36,7 +36,7 @@ import { toast } from "sonner";
 import {
   Search,
   Plus,
-  DollarSign,
+  Euro,
   UserCheck,
   UserX,
   Download,
@@ -543,8 +543,7 @@ export default function UsersPage() {
                       onClick={handleDeposit}
                       disabled={loading || !depositAmount}
                     >
-                      <DollarSign className="h-4 w-4 mr-2" />{" "}
-                      {t("common.deposit")}
+                      <Euro className="h-4 w-4 mr-2" /> {t("common.deposit")}
                     </Button>
                   </div>
                 </div>

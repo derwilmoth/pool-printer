@@ -39,14 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import {
-  Plus,
-  Trash2,
-  Save,
-  Clock,
-  DollarSign,
-  ShieldCheck,
-} from "lucide-react";
+import { Plus, Trash2, Save, Clock, Euro, ShieldCheck } from "lucide-react";
 
 interface Supervisor {
   id: number;
@@ -212,7 +205,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <Euro className="h-5 w-5" />
               {t("settings.printPrices")}
             </CardTitle>
             <CardDescription>{t("settings.priceDescription")}</CardDescription>

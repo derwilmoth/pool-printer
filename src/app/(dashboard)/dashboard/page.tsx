@@ -9,7 +9,7 @@ import {
   FileText,
   Palette,
   Printer,
-  DollarSign,
+  Euro,
   PiggyBank,
   TrendingUp,
 } from "lucide-react";
@@ -139,7 +139,7 @@ export default function DashboardPage() {
               <CardTitle className="text-sm font-medium">
                 {t("dashboard.printRevenue")}
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <Euro className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
