@@ -64,6 +64,7 @@ interface PrintJob {
   PrinterName: string;
   TotalPages: number;
   PagesPrinted: number;
+  Copies: number;
   JobStatus: string;
 }
 
@@ -106,7 +107,7 @@ async function getPausedJobs(): Promise<PrintJob[]> {
 
   for (const printer of printers) {
     try {
-      const cmd = `Get-PrintJob -PrinterName '${printer}' -ErrorAction Stop | Where-Object { $_.JobStatus -notmatch 'Printed|Completed|Sent|Deleting|Deleted' } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, JobStatus | ConvertTo-Json -Depth 3`;
+      const cmd = `Get-PrintJob -PrinterName '${printer}' -ErrorAction Stop | Where-Object { $_.JobStatus -notmatch 'Printed|Completed|Sent|Deleting|Deleted' } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, @{Name='Copies';Expression={if($_.Copies){$_.Copies}else{1}}}, JobStatus | ConvertTo-Json -Depth 3`;
       const stdout = await runPS(cmd);
 
       if (!stdout) continue;
@@ -183,10 +184,11 @@ async function handlePausedJobs(): Promise<void> {
     if (trackedJobs.has(key)) continue;
 
     const printerType = getPrinterType(job.PrinterName);
-    const pages = job.TotalPages || 1;
+    const copies = job.Copies || 1;
+    const pages = (job.TotalPages || 1) * copies;
     const userId = (job.UserName || "unknown").toLowerCase();
 
-    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType}, status: ${job.JobStatus})`);
+    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${job.TotalPages || 1} pages x ${copies} copies = ${pages} total, ${printerType}, status: ${job.JobStatus})`);
 
     try {
       // Call reserve API
