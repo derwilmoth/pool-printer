@@ -31,12 +31,12 @@ export async function GET(request: Request) {
         `SELECT
           COUNT(*) as totalJobs,
           COALESCE(SUM(t.pages), 0) as totalPages,
-          COALESCE(SUM(CASE WHEN t.type = 'print_sw' THEN t.pages ELSE 0 END), 0) as totalBwPages,
+          COALESCE(SUM(CASE WHEN t.type = 'print_bw' THEN t.pages ELSE 0 END), 0) as totalBwPages,
           COALESCE(SUM(CASE WHEN t.type = 'print_color' THEN t.pages ELSE 0 END), 0) as totalColorPages,
           COALESCE(SUM(CASE WHEN t.status = 'completed' THEN t.amount ELSE 0 END), 0) as totalRevenue
         FROM transactions t
         JOIN users u ON t.userId = u.userId
-        WHERE t.type IN ('print_sw', 'print_color')
+        WHERE t.type IN ('print_bw', 'print_color')
           AND t.timestamp >= ${dateFilter}
           AND u.is_free_account = 0
           AND t.status IN ('completed', 'pending')`

@@ -93,7 +93,7 @@ const en: Record<TranslationKey, string> = {
 
   // Transaction types
   "type.deposit": "Deposit",
-  "type.print_sw": "Print (B&W)",
+  "type.print_bw": "Print (B&W)",
   "type.print_color": "Print (Color)",
   "type.manual": "Manual",
 

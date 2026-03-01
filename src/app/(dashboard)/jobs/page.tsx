@@ -139,8 +139,8 @@ export default function JobsPage() {
     switch (type) {
       case "deposit":
         return t("type.deposit");
-      case "print_sw":
-        return t("type.print_sw");
+      case "print_bw":
+        return t("type.print_bw");
       case "print_color":
         return t("type.print_color");
       case "manual":
@@ -190,7 +190,7 @@ export default function JobsPage() {
           <SelectContent>
             <SelectItem value="all">{t("jobs.allTypes")}</SelectItem>
             <SelectItem value="deposit">{t("type.deposit")}</SelectItem>
-            <SelectItem value="print_sw">{t("type.print_sw")}</SelectItem>
+            <SelectItem value="print_bw">{t("type.print_bw")}</SelectItem>
             <SelectItem value="print_color">{t("type.print_color")}</SelectItem>
             <SelectItem value="manual">{t("type.manual")}</SelectItem>
           </SelectContent>

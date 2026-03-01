@@ -65,7 +65,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
-      setPriceBw(data.price_sw || "5");
+      setPriceBw(data.price_bw || "5");
       setPriceColor(data.price_color || "20");
       setSessionTimeout(data.session_timeout || "60");
     } catch (error) {
@@ -101,7 +101,7 @@ export default function SettingsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          price_sw: String(bw),
+          price_bw: String(bw),
           price_color: String(color),
         }),
       });

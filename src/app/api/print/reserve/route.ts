@@ -12,9 +12,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!["sw", "color"].includes(printerType)) {
+    if (!["bw", "color"].includes(printerType)) {
       return NextResponse.json(
-        { error: "printerType must be 'sw' or 'color'" },
+        { error: "printerType must be 'bw' or 'color'" },
         { status: 400 }
       );
     }
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
     }
 
     // Get price from settings
-    const priceKey = printerType === "sw" ? "price_sw" : "price_color";
+    const priceKey = printerType === "bw" ? "price_bw" : "price_color";
     const priceSetting = db
       .prepare("SELECT value FROM settings WHERE key = ?")
       .get(priceKey) as { value: string } | undefined;
 
-    const pricePerPage = priceSetting ? parseInt(priceSetting.value, 10) : (printerType === "sw" ? 5 : 20);
+    const pricePerPage = priceSetting ? parseInt(priceSetting.value, 10) : (printerType === "bw" ? 5 : 20);
     const totalCost = pricePerPage * pages;
 
     // Check balance
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const reserveTransaction = db.transaction(() => {
       db.prepare("UPDATE users SET balance = balance - ? WHERE userId = ?").run(totalCost, userId);
 
-      const type = printerType === "sw" ? "print_sw" : "print_color";
+      const type = printerType === "bw" ? "print_bw" : "print_color";
       const result = db
         .prepare(
           "INSERT INTO transactions (userId, amount, pages, type, status) VALUES (?, ?, ?, ?, 'pending')"

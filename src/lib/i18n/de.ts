@@ -91,7 +91,7 @@ const de = {
 
   // Transaction types
   "type.deposit": "Einzahlung",
-  "type.print_sw": "Druck (S/W)",
+  "type.print_bw": "Druck (S/W)",
   "type.print_color": "Druck (Farbe)",
   "type.manual": "Manuell",
 

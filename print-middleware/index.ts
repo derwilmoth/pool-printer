@@ -13,7 +13,7 @@
  *   API_KEY        - API key matching the Next.js backend
  *   POLL_INTERVAL  - Polling interval in ms (default: 3000)
  *   PRINTER_BW     - B&W printer name (default: PoolDrucker_SW)
- *   PRINTER_COLOR  - Color printer name (default: PoolDrucker_Farbe)
+ *   PRINTER_COLOR  - Color printer name (optional, no default)
  */
 
 import { exec } from "child_process";
@@ -79,12 +79,12 @@ async function apiRequest(path: string, body: Record<string, unknown>): Promise<
   return (await res.json()) as Record<string, unknown>;
 }
 
-function getPrinterType(printerName: string): "sw" | "color" {
+function getPrinterType(printerName: string): "bw" | "color" {
   // If a color printer is configured and this job is on it, it's color
   if (PRINTER_COLOR && printerName === PRINTER_COLOR && PRINTER_COLOR !== PRINTER_BW) {
     return "color";
   }
-  return "sw";
+  return "bw";
 }
 
 function jobKey(printerName: string, jobId: number): string {
@@ -186,7 +186,7 @@ async function handlePausedJobs(): Promise<void> {
     const pages = job.TotalPages || 1;
     const userId = job.UserName || "unknown";
 
-    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType === "sw" ? "bw" : printerType}, status: ${job.JobStatus})`);
+    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType}, status: ${job.JobStatus})`);
 
     try {
       // Call reserve API

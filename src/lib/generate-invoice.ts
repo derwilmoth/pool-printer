@@ -163,7 +163,7 @@ function getTypeLabel(type: string, l: (typeof labels)[Locale]): string {
   switch (type) {
     case "deposit":
       return l.deposit;
-    case "print_sw":
+    case "print_bw":
       return l.printBw;
     case "print_color":
       return l.printColor;
@@ -335,7 +335,7 @@ export async function generateInvoicePDF(
     case "deposit":
       descriptionText = tx.paymentMethod === "card" ? l.descriptionDepositCard : l.descriptionDeposit;
       break;
-    case "print_sw":
+    case "print_bw":
       descriptionText = l.descriptionPrintBw;
       break;
     case "print_color":

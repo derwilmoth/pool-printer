@@ -316,8 +316,8 @@ export default function UsersPage() {
     switch (type) {
       case "deposit":
         return t("type.deposit");
-      case "print_sw":
-        return t("type.print_sw");
+      case "print_bw":
+        return t("type.print_bw");
       case "print_color":
         return t("type.print_color");
       case "manual":

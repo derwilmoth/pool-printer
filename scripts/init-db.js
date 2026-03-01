@@ -37,7 +37,7 @@ db.exec(`
     userId TEXT NOT NULL,
     amount INTEGER NOT NULL,
     pages INTEGER NOT NULL DEFAULT 1,
-    type TEXT NOT NULL CHECK(type IN ('deposit', 'print_sw', 'print_color', 'manual')),
+    type TEXT NOT NULL CHECK(type IN ('deposit', 'print_bw', 'print_color', 'manual')),
     description TEXT DEFAULT NULL,
     status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'failed', 'refunded')),
     paymentMethod TEXT DEFAULT NULL,
@@ -71,11 +71,11 @@ if (!existingRoot) {
 const upsertSetting = db.prepare(
   "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
 );
-upsertSetting.run("price_sw", "5");
+upsertSetting.run("price_bw", "5");
 upsertSetting.run("price_color", "20");
 upsertSetting.run("session_timeout", "60");
 console.log(
-  "Default settings ensured (price_sw: 5, price_color: 20, session_timeout: 60).",
+  "Default settings ensured (price_bw: 5, price_color: 20, session_timeout: 60).",
 );
 
 db.close();
