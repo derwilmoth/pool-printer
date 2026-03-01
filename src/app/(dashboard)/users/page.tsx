@@ -84,7 +84,7 @@ export default function UsersPage() {
 
   const searchUsers = useCallback(async (query?: string) => {
     try {
-      const searchVal = query ?? "";
+      const searchVal = (query ?? "").toLowerCase();
       const url = searchVal
         ? `/api/users?search=${encodeURIComponent(searchVal)}`
         : "/api/users";
@@ -226,7 +226,7 @@ export default function UsersPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: newUserId.trim(),
+          userId: newUserId.trim().toLowerCase(),
           is_free_account: newUserIsFree,
         }),
       });

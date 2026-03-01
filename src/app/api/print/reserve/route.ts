@@ -3,7 +3,10 @@ import getDb from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
-    const { userId, pages, printerType } = await request.json();
+    const body = await request.json();
+    const userId = (body.userId as string)?.toLowerCase();
+    const pages = body.pages;
+    const printerType = body.printerType;
 
     if (!userId || !pages || !printerType) {
       return NextResponse.json(

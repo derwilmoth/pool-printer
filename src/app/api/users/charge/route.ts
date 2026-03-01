@@ -3,7 +3,10 @@ import getDb from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
-    const { userId, amount, description } = await request.json();
+    const body = await request.json();
+    const userId = (body.userId as string)?.toLowerCase();
+    const amount = body.amount;
+    const description = body.description;
 
     if (!userId || !amount || amount <= 0) {
       return NextResponse.json(

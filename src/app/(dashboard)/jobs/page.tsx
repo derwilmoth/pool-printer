@@ -78,7 +78,7 @@ export default function JobsPage() {
           page: String(page),
           limit: String(pagination.limit),
         });
-        if (filterUserId) params.set("userId", filterUserId);
+        if (filterUserId) params.set("userId", filterUserId.toLowerCase());
         if (filterType !== "all") params.set("type", filterType);
         if (filterStatus !== "all") params.set("status", filterStatus);
 

@@ -184,7 +184,7 @@ async function handlePausedJobs(): Promise<void> {
 
     const printerType = getPrinterType(job.PrinterName);
     const pages = job.TotalPages || 1;
-    const userId = job.UserName || "unknown";
+    const userId = (job.UserName || "unknown").toLowerCase();
 
     console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType}, status: ${job.JobStatus})`);
 

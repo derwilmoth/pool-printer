@@ -27,7 +27,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, is_free_account } = await request.json();
+    const body = await request.json();
+    const userId = (body.userId as string)?.toLowerCase();
+    const is_free_account = body.is_free_account;
 
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
