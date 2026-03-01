@@ -26,6 +26,13 @@ config({ path: resolve(__dirname, "..", ".env.local") });
 
 const execAsync = promisify(exec);
 
+/** Run a PowerShell command using -EncodedCommand to avoid escaping issues */
+async function runPS(cmd: string): Promise<string> {
+  const encoded = Buffer.from(cmd, "utf16le").toString("base64");
+  const { stdout } = await execAsync(`powershell -NoProfile -EncodedCommand ${encoded}`);
+  return stdout.trim();
+}
+
 // Configuration
 const API_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
 const API_KEY = process.env.API_KEY;
@@ -83,41 +90,72 @@ function jobKey(printerName: string, jobId: number): string {
   return `${printerName}:${jobId}`;
 }
 
-async function getPausedJobs(): Promise<PrintJob[]> {
-  try {
-    const cmd = `Get-PrintJob -PrinterName "${PRINTER_BW}", "${PRINTER_COLOR}" | Where-Object { $_.JobStatus -match "Paused" } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, JobStatus | ConvertTo-Json -Depth 3`;
-    const { stdout } = await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
-
-    if (!stdout.trim()) return [];
-
-    const parsed = JSON.parse(stdout.trim());
-    // PowerShell returns a single object if only one result, array if multiple
-    return Array.isArray(parsed) ? parsed : [parsed];
-  } catch (error) {
-    // Printer might not exist or no jobs
-    return [];
+function hasTrackedJobsForPrinter(printerName: string): boolean {
+  for (const tracked of trackedJobs.values()) {
+    if (tracked.printerName === printerName) return true;
   }
+  return false;
+}
+
+async function getPausedJobs(): Promise<PrintJob[]> {
+  const printers = PRINTER_BW === PRINTER_COLOR
+    ? [PRINTER_BW]
+    : [PRINTER_BW, PRINTER_COLOR];
+  const allJobs: PrintJob[] = [];
+
+  for (const printer of printers) {
+    try {
+      const cmd = `Get-PrintJob -PrinterName '${printer}' -ErrorAction Stop | Where-Object { $_.JobStatus -notmatch 'Printed|Completed|Sent|Deleting|Deleted' } | Select-Object Id, DocumentName, UserName, PrinterName, TotalPages, PagesPrinted, JobStatus | ConvertTo-Json -Depth 3`;
+      const stdout = await runPS(cmd);
+
+      if (!stdout) continue;
+
+      const parsed = JSON.parse(stdout);
+      const jobs: PrintJob[] = Array.isArray(parsed) ? parsed : [parsed];
+      allJobs.push(...jobs);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!msg.includes("No print jobs")) {
+        console.error(`[SPOOLER] Error querying ${printer}:`, msg.split("\n")[0]);
+      }
+    }
+  }
+
+  return allJobs;
 }
 
 async function getJobStatus(printerName: string, jobId: number): Promise<string | null> {
   try {
-    const cmd = `Get-PrintJob -PrinterName "${printerName}" -ID ${jobId} | Select-Object -ExpandProperty JobStatus`;
-    const { stdout } = await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
-    return stdout.trim() || null;
+    const stdout = await runPS(`Get-PrintJob -PrinterName '${printerName}' -ID ${jobId} | Select-Object -ExpandProperty JobStatus`);
+    return stdout || null;
   } catch {
     return null; // Job likely no longer exists (completed/removed)
   }
 }
 
 async function resumeJob(printerName: string, jobId: number): Promise<void> {
-  const cmd = `Resume-PrintJob -PrinterName "${printerName}" -ID ${jobId}`;
-  await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
+  await runPS(`Resume-PrintJob -PrinterName '${printerName}' -ID ${jobId}`);
+}
+
+async function unpausePrinter(printerName: string): Promise<void> {
+  try {
+    await runPS(`(Get-WmiObject -Query "SELECT * FROM Win32_Printer WHERE Name='${printerName}'").Resume() | Out-Null`);
+  } catch (error) {
+    console.error(`[PRINTER] Failed to unpause ${printerName}:`, error instanceof Error ? error.message.split('\n')[0] : error);
+  }
+}
+
+async function pausePrinter(printerName: string): Promise<void> {
+  try {
+    await runPS(`(Get-WmiObject -Query "SELECT * FROM Win32_Printer WHERE Name='${printerName}'").Pause() | Out-Null`);
+  } catch (error) {
+    console.error(`[PRINTER] Failed to pause ${printerName}:`, error instanceof Error ? error.message.split('\n')[0] : error);
+  }
 }
 
 async function removeJob(printerName: string, jobId: number): Promise<void> {
   try {
-    const cmd = `Remove-PrintJob -PrinterName "${printerName}" -ID ${jobId} -ErrorAction SilentlyContinue`;
-    await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
+    await runPS(`Remove-PrintJob -PrinterName '${printerName}' -ID ${jobId} -ErrorAction SilentlyContinue`);
   } catch {
     // Job may already be gone
   }
@@ -125,8 +163,7 @@ async function removeJob(printerName: string, jobId: number): Promise<void> {
 
 async function cancelJob(printerName: string, jobId: number): Promise<void> {
   try {
-    const cmd = `Remove-PrintJob -PrinterName "${printerName}" -ID ${jobId} -ErrorAction SilentlyContinue`;
-    await execAsync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`);
+    await runPS(`Remove-PrintJob -PrinterName '${printerName}' -ID ${jobId} -ErrorAction SilentlyContinue`);
   } catch {
     // Job may already be gone
   }
@@ -148,7 +185,7 @@ async function handlePausedJobs(): Promise<void> {
     const pages = job.TotalPages || 1;
     const userId = job.UserName || "unknown";
 
-    console.log(`[NEW] Paused job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType})`);
+    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType}, status: ${job.JobStatus})`);
 
     try {
       // Call reserve API
@@ -159,8 +196,10 @@ async function handlePausedJobs(): Promise<void> {
       });
 
       if (result.allowed) {
-        // Resume the print job
-        await resumeJob(job.PrinterName, id);
+        // Unpause the printer so the job can actually print
+        await unpausePrinter(job.PrinterName);
+        // Resume the individual job in case it was paused
+        try { await resumeJob(job.PrinterName, id); } catch { /* already running */ }
 
         const tracked: TrackedJob = {
           jobId: id,
@@ -200,6 +239,11 @@ async function checkTrackedJobs(): Promise<void> {
           console.log(`[COMPLETED] Job #${tracked.jobId} (free account)`);
         }
         trackedJobs.delete(key);
+        // Re-pause printer if no more tracked jobs for this printer
+        if (!hasTrackedJobsForPrinter(tracked.printerName)) {
+          await pausePrinter(tracked.printerName);
+          console.log(`[PRINTER] ${tracked.printerName} paused (no pending jobs)`);
+        }
         continue;
       }
 
@@ -212,6 +256,11 @@ async function checkTrackedJobs(): Promise<void> {
         // Try to clean up the job
         await removeJob(tracked.printerName, tracked.jobId);
         trackedJobs.delete(key);
+        // Re-pause printer if no more tracked jobs
+        if (!hasTrackedJobsForPrinter(tracked.printerName)) {
+          await pausePrinter(tracked.printerName);
+          console.log(`[PRINTER] ${tracked.printerName} paused (no pending jobs)`);
+        }
         continue;
       }
 
@@ -223,6 +272,11 @@ async function checkTrackedJobs(): Promise<void> {
         }
         await cancelJob(tracked.printerName, tracked.jobId);
         trackedJobs.delete(key);
+        // Re-pause printer if no more tracked jobs
+        if (!hasTrackedJobsForPrinter(tracked.printerName)) {
+          await pausePrinter(tracked.printerName);
+          console.log(`[PRINTER] ${tracked.printerName} paused (no pending jobs)`);
+        }
         continue;
       }
 
@@ -236,6 +290,11 @@ async function checkTrackedJobs(): Promise<void> {
         }
         await cancelJob(tracked.printerName, tracked.jobId);
         trackedJobs.delete(key);
+        // Re-pause printer if no more tracked jobs
+        if (!hasTrackedJobsForPrinter(tracked.printerName)) {
+          await pausePrinter(tracked.printerName);
+          console.log(`[PRINTER] ${tracked.printerName} paused (no pending jobs)`);
+        }
       }
     } catch (error) {
       console.error(`[ERROR] Checking tracked job #${tracked.jobId}:`, error);
@@ -255,7 +314,12 @@ async function poll(): Promise<void> {
 // Main entry point
 console.log("=== Print Middleware Starting ===");
 console.log(`API URL: ${API_URL}`);
-console.log(`Printers: ${PRINTER_BW}, ${PRINTER_COLOR}`);
+if (PRINTER_BW === PRINTER_COLOR) {
+  console.log(`Printer: ${PRINTER_BW} (B&W + Color)`);
+} else {
+  console.log(`Printer B&W: ${PRINTER_BW}`);
+  console.log(`Printer Color: ${PRINTER_COLOR}`);
+}
 console.log(`Poll interval: ${POLL_INTERVAL}ms`);
 console.log("================================\n");
 
