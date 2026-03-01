@@ -42,7 +42,7 @@ if (!API_KEY) {
 }
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "3000", 10);
 const PRINTER_BW = process.env.PRINTER_BW || "PoolDrucker_SW";
-const PRINTER_COLOR = process.env.PRINTER_COLOR || "PoolDrucker_Farbe";
+const PRINTER_COLOR = process.env.PRINTER_COLOR || ""; // empty = no color printer
 
 // In-memory tracking of active print jobs
 interface TrackedJob {
@@ -80,7 +80,8 @@ async function apiRequest(path: string, body: Record<string, unknown>): Promise<
 }
 
 function getPrinterType(printerName: string): "sw" | "color" {
-  if (printerName.toLowerCase().includes("farbe") || printerName.toLowerCase().includes("color")) {
+  // If a color printer is configured and this job is on it, it's color
+  if (PRINTER_COLOR && printerName === PRINTER_COLOR && PRINTER_COLOR !== PRINTER_BW) {
     return "color";
   }
   return "sw";
@@ -98,7 +99,7 @@ function hasTrackedJobsForPrinter(printerName: string): boolean {
 }
 
 async function getPausedJobs(): Promise<PrintJob[]> {
-  const printers = PRINTER_BW === PRINTER_COLOR
+  const printers = !PRINTER_COLOR || PRINTER_BW === PRINTER_COLOR
     ? [PRINTER_BW]
     : [PRINTER_BW, PRINTER_COLOR];
   const allJobs: PrintJob[] = [];
@@ -185,7 +186,7 @@ async function handlePausedJobs(): Promise<void> {
     const pages = job.TotalPages || 1;
     const userId = job.UserName || "unknown";
 
-    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType}, status: ${job.JobStatus})`);
+    console.log(`[NEW] Job #${id} from ${userId} on ${job.PrinterName} (${pages} pages, ${printerType === "sw" ? "bw" : printerType}, status: ${job.JobStatus})`);
 
     try {
       // Call reserve API
@@ -314,8 +315,8 @@ async function poll(): Promise<void> {
 // Main entry point
 console.log("=== Print Middleware Starting ===");
 console.log(`API URL: ${API_URL}`);
-if (PRINTER_BW === PRINTER_COLOR) {
-  console.log(`Printer: ${PRINTER_BW} (B&W + Color)`);
+if (!PRINTER_COLOR || PRINTER_BW === PRINTER_COLOR) {
+  console.log(`Printer: ${PRINTER_BW} (B&W only)`);
 } else {
   console.log(`Printer B&W: ${PRINTER_BW}`);
   console.log(`Printer Color: ${PRINTER_COLOR}`);

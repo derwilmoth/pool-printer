@@ -321,15 +321,18 @@ pool-printer/
 cp .env.example .env.local
 # → .env.local öffnen und NEXTAUTH_SECRET + API_KEY eintragen
 
-# 2. Datenbank initialisieren
+# 2. Benötigten Pakete installieren
+npm install
+
+# 3. Datenbank initialisieren
 npm run db:init
 
-# 3. Produktions-Build erstellen
+# 4. Produktions-Build erstellen
 npm run build
 ```
 
 ```powershell
-# 4. **Drucker einrichten** (PowerShell als Admin):
+# 5. **Drucker einrichten** (PowerShell als Admin):
 # Drucker auf die erwarteten Namen umbenennen
 Rename-Printer -Name "Dein SW-Drucker" -NewName "PoolDrucker_SW"
 Rename-Printer -Name "Dein Farbdrucker" -NewName "PoolDrucker_Farbe"
