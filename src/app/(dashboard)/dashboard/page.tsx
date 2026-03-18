@@ -13,6 +13,7 @@ import {
   Euro,
   PiggyBank,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 
 interface Stats {
@@ -23,6 +24,8 @@ interface Stats {
   totalRevenue: number;
   totalDeposits: number;
   totalDepositAmount: number;
+  totalManualJobs: number;
+  totalManualRevenue: number;
   timeframe: string;
 }
 
@@ -73,8 +76,8 @@ export default function DashboardPage() {
       </Tabs>
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -86,7 +89,7 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : stats ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -145,6 +148,32 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {formatCurrency(stats.totalRevenue)}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("dashboard.manualJobs")}
+              </CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalManualJobs}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t("dashboard.manualRevenue")}
+              </CardTitle>
+              <Euro className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(stats.totalManualRevenue)}
               </div>
             </CardContent>
           </Card>

@@ -62,9 +62,23 @@ export async function GET(request: Request) {
       )
       .get() as { totalDeposits: number; totalDepositAmount: number };
 
+    // Get manual transaction stats
+    const manualStats = db
+      .prepare(
+        `SELECT
+          COUNT(*) as totalManualJobs,
+          COALESCE(SUM(amount), 0) as totalManualRevenue
+        FROM transactions
+        WHERE type = 'manual'
+          AND status IN ('completed', 'pending')
+          AND timestamp >= ${dateFilter}`
+      )
+      .get() as { totalManualJobs: number; totalManualRevenue: number };
+
     return NextResponse.json({
       ...stats,
       ...depositStats,
+      ...manualStats,
       timeframe,
     });
   } catch (error) {

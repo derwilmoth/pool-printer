@@ -60,6 +60,8 @@ const de = {
   "dashboard.colorPages": "Farbseiten",
   "dashboard.printRevenue": "Druckumsatz",
   "dashboard.deposits": "Einzahlungen",
+  "dashboard.manualJobs": "Manuelle Aufträge gesamt",
+  "dashboard.manualRevenue": "Manueller Umsatz",
   "dashboard.transactions": "Transaktionen",
   "dashboard.failedToLoad": "Statistiken konnten nicht geladen werden.",
 

@@ -62,6 +62,8 @@ const en: Record<TranslationKey, string> = {
   "dashboard.colorPages": "Color Pages",
   "dashboard.printRevenue": "Print Revenue",
   "dashboard.deposits": "Deposits",
+  "dashboard.manualJobs": "Total Manual Jobs",
+  "dashboard.manualRevenue": "Manual Revenue",
   "dashboard.transactions": "transactions",
   "dashboard.failedToLoad": "Failed to load statistics.",
 
