@@ -29,7 +29,7 @@ const en: Record<TranslationKey, string> = {
   "nav.navigation": "Navigation",
   "nav.dashboard": "Dashboard",
   "nav.users": "Manage Users",
-  "nav.jobs": "Print Jobs",
+  "nav.jobs": "Transactions",
   "nav.settings": "Settings",
   "nav.signedInAs": "Signed in as",
   "nav.logout": "Logout",
