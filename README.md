@@ -8,12 +8,13 @@ Ein schlankes System zur Verwaltung und Abrechnung von Druckaufträgen in einem 
 
 ## Überblick
 
-Das System besteht aus **zwei Komponenten**:
+Das System besteht aus **drei Komponenten**:
 
-| Komponente           | Beschreibung                                                                                                                                                                                                                                   |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Next.js Web-App**  | Dashboard für Aufsichtspersonen: Guthaben aufladen, Druckjobs & Nutzer verwalten, Preise konfigurieren, Statistiken einsehen. Studenten haben **keinen** Zugriff.                                                                              |
-| **Print Middleware** | Node.js-Skript auf dem Windows Print Server. Kommuniziert mit dem Windows Print Spooler, fängt Druckaufträge ab, prüft Guthaben über die API, gibt Drucker kurzzeitig frei, druckt den Job und pausiert den Drucker danach wieder automatisch. |
+| Komponente            | Beschreibung                                                                                                                                                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Next.js Web-App**   | Dashboard für Aufsichtspersonen: Guthaben aufladen, Druckjobs & Nutzer verwalten, Preise konfigurieren, Statistiken einsehen. Außerdem Public-Self-Service unter `/public` für normale PC-Nutzer.                                              |
+| **Print Middleware**  | Node.js-Skript auf dem Windows Print Server. Kommuniziert mit dem Windows Print Spooler, fängt Druckaufträge ab, prüft Guthaben über die API, gibt Drucker kurzzeitig frei, druckt den Job und pausiert den Drucker danach wieder automatisch. |
+| **Windows SSO Proxy** | Node.js-Proxy mit integrierter Windows-Authentifizierung (SSPI). Nimmt den Benutzer per AD/Windows-Session entgegen und leitet ihn als Header `x-remote-user` an die Web-App weiter.                                                           |
 
 ## Features
 
@@ -30,6 +31,8 @@ Das System besteht aus **zwei Komponenten**:
 - 🎨 **Eigenes Logo** – `public/logo.svg` ablegen → wird automatisch auf PDF-Belegen, in der Sidebar und als Favicon verwendet
 - 🔡 **Automatische Kleinschreibung** – Alle Benutzer-IDs werden systemweit automatisch in Kleinbuchstaben umgewandelt (siehe [Benutzer-ID Normalisierung](#benutzer-id-normalisierung))
 - 👤 **Auto-Erstellung** – Nutzer werden automatisch beim ersten Druckauftrag oder bei der ersten Einzahlung angelegt
+- 👥 **Public Self-Service** – `/public` zeigt normalen PC-Nutzern ihr eigenes Guthaben, ihre eigene Transaktionshistorie und PDF-Belege (ohne Supervisor-Login)
+- 🔐 **Windows SSO Integration** – Benutzerauflösung über `x-remote-user` (vom integrierten SSO-Proxy) mit automatischer Normalisierung (`DOMAIN\\user` / `user@domain` → `user`)
 - 🌍 **i18n** – Deutsch (Standard) & Englisch umschaltbar
 - 🌙 **Dark Mode** – Hell / Dunkel / System-Einstellung
 
@@ -45,6 +48,7 @@ Das System besteht aus **zwei Komponenten**:
 | NextAuth (Credentials)            | Authentifizierung (JWT)       |
 | next-themes                       | Dark Mode                     |
 | Node.js + TypeScript + PowerShell | Print Middleware              |
+| Node.js + node-expose-sspi        | Windows SSO Proxy             |
 
 ---
 
@@ -82,9 +86,18 @@ API_KEY=dein-api-key-hier
 | `NEXTAUTH_URL`    | ✅ Ja   | –        | Die Basis-URL der Web-App. Lokal: `http://localhost:3000`. In Produktion die echte Domain. Wird auch von der Print Middleware als API-URL verwendet.  |
 | `API_KEY`         | ✅ Ja   | –        | API-Schlüssel, den die Print Middleware verwendet, um sich bei der Web-App zu authentifizieren. Muss in Middleware und Web-App **identisch** sein.    |
 
+#### Umgebungsvariablen – Windows SSO Proxy (Optional)
+
+| Variable              | Pflicht | Standard    | Beschreibung                                                                                  |
+| --------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `SSO_PROXY_PORT`      | Nein    | `3000`      | Öffentlicher Port des SSO-Proxys. Hier greifen Benutzer im Browser zu.                        |
+| `NEXT_INTERNAL_PORT`  | Nein    | `3100`      | Interner Next.js-Port hinter dem SSO-Proxy.                                                   |
+| `NEXT_INTERNAL_HOST`  | Nein    | `127.0.0.1` | Host für den internen Next.js-Prozess.                                                        |
+| `SSO_PROXY_SKIP_NEXT` | Nein    | `0`         | Bei `1` startet der Proxy **keinen** internen Next.js-Prozess (für externe Prozesssteuerung). |
+
 #### Alle Umgebungsvariablen – Print Middleware
 
-Diese werden beim Starten der Middleware gesetzt (per Umgebungsvariable oder `.env`-Datei im `print-middleware/`-Ordner). `NEXTAUTH_URL` und `API_KEY` werden aus der `.env.local` gelesen, wenn die Middleware im gleichen Projektordner läuft:
+Diese Variablen liegen ebenfalls in derselben Root-Datei **`.env.local`** (keine separate Middleware-`.env`):
 
 | Variable        | Pflicht | Standard         | Beschreibung                                                                                                                  |
 | --------------- | ------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -117,7 +130,7 @@ Lege eine Datei **`public/logo.svg`** im Projektordner ab. Sie wird automatisch 
 
 Kein Env-Eintrag nötig – ohne `logo.svg` wird ein Standard-Drucker-Icon angezeigt.
 
-> ⚠️ **Wichtig:** `API_KEY` muss in **beiden** Konfigurationen (`.env.local` der Web-App und Middleware) den gleichen Wert haben!
+> ⚠️ **Wichtig:** Alle Variablen (Web-App, Middleware, SSO) werden zentral in der Root-`.env.local` gepflegt.
 
 ### 3. Datenbank initialisieren
 
@@ -132,18 +145,15 @@ Erstellt die SQLite-Datenbank unter `data/pool-printer.db` mit dem Standard-Logi
 
 > ⚠️ Erstelle nach dem ersten Login einen neuen eigenen Supervisor und lösche root!
 
-### 4. Web-App starten
+### 4. Mit Windows SSO starten
 
 ```bash
-# Entwicklung
-npm run dev
-
-# Produktion
+# Produktion mit Windows SSO
 npm run build
-npm start
+npm run start:sso
 ```
 
-Erreichbar unter `http://localhost:3000`. Einloggen mit `root` / `root`.
+Der Proxy ist unter `http://localhost:3000` erreichbar und leitet intern an Next.js (`http://127.0.0.1:3100`) weiter.
 
 ---
 
@@ -245,12 +255,9 @@ Um eigene Druckernamen und API-Key zu verwenden:
 ```bash
 # Windows PowerShell
 $env:API_KEY="mein-geheimer-key"; $env:PRINTER_BW="MeinDrucker"; npx tsx print-middleware/index.ts
-
-# Oder mit .env-Datei (print-middleware/.env):
-# API_KEY=mein-geheimer-key
-# PRINTER_BW=MeinDrucker
-# PRINTER_COLOR=MeinFarbdrucker
 ```
+
+Für den Dauerbetrieb die Werte direkt in der Root-`.env.local` setzen.
 
 > 💡 Die Middleware-Logs werden auf **Englisch** ausgegeben.
 
@@ -297,6 +304,14 @@ Drucker wird wieder pausiert (Pause)
 (Wenn keine weiteren Jobs in der Warteschlange sind)
 ```
 
+### Public Self-Service (ohne Supervisor-Login)
+
+- Route `/public` ist öffentlich erreichbar.
+- Die API-Routen `/api/public/me`, `/api/public/create-account`, `/api/public/transactions` sind ebenfalls öffentlich, aber strikt auf den aufgelösten Windows-Benutzer begrenzt.
+- Der SSO-Proxy setzt den Header `x-remote-user`; die App normalisiert auf Kleinbuchstaben.
+- Falls ein Konto noch nicht existiert, kann es auf `/public` direkt erstellt werden (Startguthaben `0`).
+- Root-Weiterleitung: ohne Supervisor-Session `/` → `/public`, mit Supervisor-Session `/` → `/dashboard`.
+
 ### Benutzer-ID Normalisierung
 
 Alle Benutzer-IDs werden **systemweit automatisch in Kleinbuchstaben** umgewandelt. Das verhindert Duplikate wie `MaxMuster` und `maxmuster`.
@@ -317,7 +332,9 @@ Die Normalisierung greift an **allen Eingabepunkten**:
 
 ```
 pool-printer/
-├── .env.local                  # Umgebungsvariablen (Web-App)
+├── .env.local                  # Zentrale Umgebungsvariablen (Web-App, Middleware, SSO)
+├── server/
+│   └── windows-sso-proxy.ts    # Windows SSO Proxy (node-expose-sspi)
 ├── public/
 │   └── logo.svg                # Eigenes Logo (optional)
 ├── data/
@@ -328,6 +345,8 @@ pool-printer/
 │   ├── app/
 │   │   ├── layout.tsx          # Root Layout
 │   │   ├── login/page.tsx      # Login-Seite
+│   │   ├── public/page.tsx     # Public Self-Service Seite
+│   │   ├── api/public/         # Public Self-Service APIs
 │   │   └── (dashboard)/
 │   │       ├── dashboard/page.tsx  # Statistik-Dashboard
 │   │       ├── users/page.tsx      # Nutzerverwaltung
@@ -341,6 +360,7 @@ pool-printer/
 │   │   ├── db.ts               # Datenbankverbindung
 │   │   ├── generate-invoice.ts # PDF-Beleg-Generierung
 │   │   ├── useAppStore.ts      # Zustand Store
+│   │   ├── windows-user.ts     # Windows-Benutzerauflösung/Normalisierung
 │   │   └── i18n/               # Übersetzungen (de/en)
 │   └── middleware.ts           # Auth & API-Key Middleware
 └── scripts/
@@ -351,13 +371,12 @@ pool-printer/
 
 ## Verfügbare Scripts
 
-| Befehl                              | Beschreibung                             |
-| ----------------------------------- | ---------------------------------------- |
-| `npm run dev`                       | Startet die Web-App im Entwicklungsmodus |
-| `npm run build`                     | Erstellt einen Produktions-Build         |
-| `npm start`                         | Startet den Produktions-Build            |
-| `npm run db:init`                   | Initialisiert die SQLite-Datenbank       |
-| `npx tsx print-middleware/index.ts` | Startet die Print Middleware             |
+| Befehl                              | Beschreibung                                                 |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `npm run build`                     | Erstellt einen Produktions-Build                             |
+| `npm run start:sso`                 | Startet den Windows SSO Proxy (inkl. internem Next.js Start) |
+| `npm run db:init`                   | Initialisiert die SQLite-Datenbank                           |
+| `npx tsx print-middleware/index.ts` | Startet die Print Middleware                                 |
 
 ---
 
@@ -368,7 +387,7 @@ pool-printer/
 ```bash
 # 1. Umgebungsvariablen anlegen
 cp .env.example .env.local
-# → .env.local öffnen und NEXTAUTH_SECRET + API_KEY eintragen
+# → .env.local öffnen und Werte für Web-App, Middleware und SSO eintragen
 
 # 2. Abhängigkeiten installieren
 npm install
@@ -403,11 +422,11 @@ Rename-Printer -Name "Dein Farbdrucker" -NewName "PoolDrucker_Farbe"
 >
 > Windows verteilt Jobs automatisch auf den nächsten freien Drucker.
 
-### Bei jedem Start (2 Terminals)
+### Bei jedem Start (2 Terminals, mit SSO)
 
 ```bash
-# Terminal 1: Web-App starten
-npm start
+# Terminal 1: SSO-Proxy starten (startet intern Next.js auf :3100)
+npm run start:sso
 
 # Terminal 2: Print Middleware starten
 npx tsx print-middleware/index.ts
@@ -421,8 +440,8 @@ npx tsx print-middleware/index.ts
 # PM2 global installieren (einmalig)
 npm install -g pm2
 
-# Beide Prozesse starten
-pm2 start npm --name "pool-printer-web" -- start
+# Beide Prozesse starten (mit SSO)
+pm2 start npm --name "pool-printer-sso" -- run start:sso
 pm2 start npx --name "pool-printer-middleware" -- tsx print-middleware/index.ts
 
 # Beim Systemstart automatisch starten (Windows: pm2-startup)
@@ -450,12 +469,13 @@ A lightweight system for managing and billing print jobs in a PC pool (e.g. univ
 
 ## Overview
 
-The system consists of **two components**:
+The system consists of **three components**:
 
-| Component            | Description                                                                                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Next.js Web App**  | Dashboard for supervisors: top up balances, manage print jobs & users, configure prices, view statistics. Students have **no** access.                                                                                         |
-| **Print Middleware** | Node.js script on the Windows Print Server. Communicates with Windows Print Spooler, intercepts print jobs, checks balance via API, temporarily unpauses the printer, prints the job, and automatically re-pauses the printer. |
+| Component             | Description                                                                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Next.js Web App**   | Dashboard for supervisors: top up balances, manage print jobs & users, configure prices, view statistics. Includes public self-service at `/public` for regular PC users.                                                      |
+| **Print Middleware**  | Node.js script on the Windows Print Server. Communicates with Windows Print Spooler, intercepts print jobs, checks balance via API, temporarily unpauses the printer, prints the job, and automatically re-pauses the printer. |
+| **Windows SSO Proxy** | Node.js proxy with integrated Windows authentication (SSPI). Resolves the AD/Windows user session and forwards it to the web app as `x-remote-user`.                                                                           |
 
 ## Features
 
@@ -472,6 +492,8 @@ The system consists of **two components**:
 - 🎨 **Custom Logo** – Place `public/logo.svg` → automatically used on PDF receipts, sidebar, and as favicon
 - 🔡 **Automatic Lowercasing** – All user IDs are automatically lowercased system-wide (see [User ID Normalization](#user-id-normalization))
 - 👤 **Auto-Creation** – Users are automatically created on their first print job or deposit
+- 👥 **Public Self-Service** – `/public` lets regular PC users view their own balance, own transaction history, and PDF receipts (no supervisor login)
+- 🔐 **Windows SSO Integration** – User resolution via `x-remote-user` (from integrated SSO proxy) with automatic normalization (`DOMAIN\\user` / `user@domain` → `user`)
 - 🌍 **i18n** – German (default) & English switchable
 - 🌙 **Dark Mode** – Light / Dark / System preference
 
@@ -487,6 +509,7 @@ The system consists of **two components**:
 | NextAuth (Credentials)            | Authentication (JWT)       |
 | next-themes                       | Dark Mode                  |
 | Node.js + TypeScript + PowerShell | Print Middleware           |
+| Node.js + node-expose-sspi        | Windows SSO Proxy          |
 
 ---
 
@@ -524,9 +547,18 @@ API_KEY=your-api-key-here
 | `NEXTAUTH_URL`    | ✅ Yes   | –       | Base URL of the web app. Locally: `http://localhost:3000`. In production, your actual domain. Also used by the Print Middleware as API URL. |
 | `API_KEY`         | ✅ Yes   | –       | API key used by the Print Middleware to authenticate with the web app. Must be **identical** in middleware and web app.                     |
 
+#### Environment Variables – Windows SSO Proxy (Optional)
+
+| Variable              | Required | Default     | Description                                                                      |
+| --------------------- | -------- | ----------- | -------------------------------------------------------------------------------- |
+| `SSO_PROXY_PORT`      | No       | `3000`      | Public port of the SSO proxy. This is where users access the app in the browser. |
+| `NEXT_INTERNAL_PORT`  | No       | `3100`      | Internal Next.js port behind the SSO proxy.                                      |
+| `NEXT_INTERNAL_HOST`  | No       | `127.0.0.1` | Host used for the internal Next.js process.                                      |
+| `SSO_PROXY_SKIP_NEXT` | No       | `0`         | If set to `1`, the proxy does **not** launch an internal Next.js process.        |
+
 #### All Environment Variables – Print Middleware
 
-Set when starting the middleware (via environment variable or `.env` file in the `print-middleware/` folder). `NEXTAUTH_URL` and `API_KEY` are read from `.env.local` when the middleware runs in the same project folder:
+These variables are also kept in the same root **`.env.local`** file (no separate middleware `.env`):
 
 | Variable        | Required | Default          | Description                                                                                                        |
 | --------------- | -------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -559,7 +591,7 @@ Place a file **`public/logo.svg`** in the project folder. It is automatically us
 
 No env entry needed – without `logo.svg`, a default printer icon is shown.
 
-> ⚠️ **Important:** `API_KEY` must have the **same value** in both configurations (`.env.local` of the web app and middleware)!
+> ⚠️ **Important:** Keep all variables (web app, middleware, SSO) centrally in the root `.env.local`.
 
 ### 3. Initialize Database
 
@@ -574,18 +606,15 @@ Creates the SQLite database at `data/pool-printer.db` with the default login:
 
 > ⚠️ After the first login, create your own supervisor account and delete root!
 
-### 4. Start the Web App
+### 4. Start with Windows SSO
 
 ```bash
-# Development
-npm run dev
-
-# Production
+# Production with Windows SSO
 npm run build
-npm start
+npm run start:sso
 ```
 
-Available at `http://localhost:3000`. Log in with `root` / `root`.
+The proxy is available at `http://localhost:3000` and forwards internally to Next.js (`http://127.0.0.1:3100`).
 
 ---
 
@@ -687,12 +716,9 @@ To use custom printer names and API key:
 ```bash
 # Windows PowerShell
 $env:API_KEY="my-secret-key"; $env:PRINTER_BW="MyPrinter"; npx tsx print-middleware/index.ts
-
-# Or with .env file (print-middleware/.env):
-# API_KEY=my-secret-key
-# PRINTER_BW=MyPrinter
-# PRINTER_COLOR=MyColorPrinter
 ```
+
+For permanent configuration, set these values in the root `.env.local`.
 
 ---
 
@@ -737,6 +763,14 @@ Printer is re-paused (Pause)
 (If no more jobs are queued)
 ```
 
+### Public Self-Service (without supervisor login)
+
+- Route `/public` is publicly accessible.
+- API routes `/api/public/me`, `/api/public/create-account`, `/api/public/transactions` are also public, but strictly scoped to the resolved Windows user.
+- The SSO proxy sets the `x-remote-user` header; the app normalizes to lowercase.
+- If an account does not exist yet, it can be created directly on `/public` (initial balance `0`).
+- Root redirect behavior: without supervisor session `/` → `/public`, with supervisor session `/` → `/dashboard`.
+
 ### User ID Normalization
 
 All user IDs are **automatically lowercased system-wide**. This prevents duplicates like `MaxMuster` and `maxmuster`.
@@ -757,7 +791,9 @@ Normalization is applied at **all entry points**:
 
 ```
 pool-printer/
-├── .env.local                  # Environment variables (Web App)
+├── .env.local                  # Central environment variables (Web App, Middleware, SSO)
+├── server/
+│   └── windows-sso-proxy.ts    # Windows SSO proxy (node-expose-sspi)
 ├── public/
 │   └── logo.svg                # Custom logo (optional)
 ├── data/
@@ -768,6 +804,8 @@ pool-printer/
 │   ├── app/
 │   │   ├── layout.tsx          # Root Layout
 │   │   ├── login/page.tsx      # Login page
+│   │   ├── public/page.tsx     # Public self-service page
+│   │   ├── api/public/         # Public self-service APIs
 │   │   └── (dashboard)/
 │   │       ├── dashboard/page.tsx  # Statistics dashboard
 │   │       ├── users/page.tsx      # User management
@@ -781,6 +819,7 @@ pool-printer/
 │   │   ├── db.ts               # Database connection
 │   │   ├── generate-invoice.ts # PDF receipt generation
 │   │   ├── useAppStore.ts      # Zustand store
+│   │   ├── windows-user.ts     # Windows user resolving/normalization
 │   │   └── i18n/               # Translations (de/en)
 │   └── middleware.ts           # Auth & API key middleware
 └── scripts/
@@ -791,13 +830,12 @@ pool-printer/
 
 ## Available Scripts
 
-| Command                             | Description                           |
-| ----------------------------------- | ------------------------------------- |
-| `npm run dev`                       | Start the web app in development mode |
-| `npm run build`                     | Create a production build             |
-| `npm start`                         | Start the production build            |
-| `npm run db:init`                   | Initialize the SQLite database        |
-| `npx tsx print-middleware/index.ts` | Start the Print Middleware            |
+| Command                             | Description                                                |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `npm run build`                     | Create a production build                                  |
+| `npm run start:sso`                 | Start Windows SSO proxy (including internal Next.js start) |
+| `npm run db:init`                   | Initialize the SQLite database                             |
+| `npx tsx print-middleware/index.ts` | Start the Print Middleware                                 |
 
 ---
 
@@ -808,7 +846,7 @@ pool-printer/
 ```bash
 # 1. Create environment variables
 cp .env.example .env.local
-# → Open .env.local and set NEXTAUTH_SECRET + API_KEY
+# → Open .env.local and set values for web app, middleware, and SSO
 
 # 2. Install dependencies
 npm install
@@ -843,11 +881,11 @@ Rename-Printer -Name "Your Color Printer" -NewName "PoolDrucker_Farbe"
 >
 > Windows automatically distributes jobs to the next available printer.
 
-### On Every Start (2 Terminals)
+### On Every Start (2 Terminals, with SSO)
 
 ```bash
-# Terminal 1: Start the web app
-npm start
+# Terminal 1: Start SSO proxy (launches Next.js internally on :3100)
+npm run start:sso
 
 # Terminal 2: Start the Print Middleware
 npx tsx print-middleware/index.ts
@@ -861,8 +899,8 @@ npx tsx print-middleware/index.ts
 # Install PM2 globally (one-time)
 npm install -g pm2
 
-# Start both processes
-pm2 start npm --name "pool-printer-web" -- start
+# Start both processes (with SSO)
+pm2 start npm --name "pool-printer-sso" -- run start:sso
 pm2 start npx --name "pool-printer-middleware" -- tsx print-middleware/index.ts
 
 # Auto-start on system boot (Windows: pm2-startup)

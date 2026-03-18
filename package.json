@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:init": "node scripts/init-db.js"
+    "db:init": "node scripts/init-db.js",
+    "start:sso": "tsx server/windows-sso-proxy.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -21,6 +22,7 @@
     "next": "^16.1.6",
     "next-auth": "^4.24.13",
     "next-themes": "^0.4.6",
+    "node-expose-sspi": "^0.1.60",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -51,15 +51,6 @@ function isLocalRequest(headers: Headers): boolean {
 }
 
 export function resolveWindowsUser(headers: Headers): ResolvedWindowsUser | null {
-  const customHeaderName = process.env.WINDOWS_USER_HEADER?.trim().toLowerCase();
-  if (customHeaderName) {
-    const customHeaderValue = headers.get(customHeaderName);
-    const normalized = customHeaderValue ? normalizeUserId(customHeaderValue) : "";
-    if (normalized) {
-      return { userId: normalized, source: `header:${customHeaderName}` };
-    }
-  }
-
   for (const headerName of USERNAME_HEADERS) {
     const headerValue = headers.get(headerName);
     if (!headerValue) continue;
