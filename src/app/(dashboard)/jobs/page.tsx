@@ -159,6 +159,8 @@ export default function JobsPage() {
     return t(key);
   };
 
+  const isCreditTransaction = (type: string) => type === "deposit";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -260,7 +262,16 @@ export default function JobsPage() {
                       ? `${typeLabel(tx.type)}: ${tx.description}`
                       : typeLabel(tx.type)}
                   </TableCell>
-                  <TableCell>{formatCurrency(tx.amount)}</TableCell>
+                  <TableCell
+                    className={
+                      isCreditTransaction(tx.type)
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }
+                  >
+                    {isCreditTransaction(tx.type) ? "+" : "-"}
+                    {formatCurrency(Math.abs(tx.amount))}
+                  </TableCell>
                   <TableCell>{tx.pages || "-"}</TableCell>
                   <TableCell>
                     <Badge

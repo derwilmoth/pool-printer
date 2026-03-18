@@ -62,6 +62,9 @@ const labels: Record<
     unitPrice: string;
     quantity: string;
     total: string;
+    paid: string;
+    credited: string;
+    reimbursed: string;
   }
 > = {
   de: {
@@ -98,6 +101,9 @@ const labels: Record<
     unitPrice: "Einzelpreis",
     quantity: "Menge",
     total: "Gesamt",
+    paid: "bezahlt",
+    credited: "gutgeschrieben",
+    reimbursed: "erstattet",
   },
   en: {
     title: "Pool Printer Receipt",
@@ -133,6 +139,9 @@ const labels: Record<
     unitPrice: "Unit price",
     quantity: "Qty",
     total: "Total",
+    paid: "paid",
+    credited: "credited",
+    reimbursed: "refunded",
   },
 };
 
@@ -379,6 +388,12 @@ export async function generateInvoicePDF(
   doc.text(descriptionText, colItem + 3, y);
 
   const absCents = Math.abs(tx.amount);
+  const amountSuffix = tx.status === "refunded"
+    ? l.reimbursed
+    : tx.type === "deposit"
+      ? l.credited
+      : l.paid;
+  const amountWithStatus = `${formatCurrency(absCents, locale, cfg.currency)} ${amountSuffix}`;
 
   if (tx.type !== "deposit" && tx.pages && tx.pages > 0) {
     doc.text(String(tx.pages), colQty, y);
@@ -389,7 +404,7 @@ export async function generateInvoicePDF(
       y,
     );
   }
-  doc.text(formatCurrency(absCents, locale, cfg.currency), colTotal - 3, y, {
+  doc.text(amountWithStatus, colTotal - 3, y, {
     align: "right",
   });
 
@@ -441,7 +456,7 @@ export async function generateInvoicePDF(
     doc.setTextColor(30, 30, 30);
     doc.text(l.grossAmount, colUnitPrice, y + 2);
     doc.text(
-      formatCurrency(absCents, locale, cfg.currency),
+      amountWithStatus,
       colTotal - 3,
       y + 2,
       { align: "right" },
@@ -457,7 +472,7 @@ export async function generateInvoicePDF(
     doc.setTextColor(30, 30, 30);
     doc.text(l.amount, colUnitPrice, y + 2);
     doc.text(
-      formatCurrency(absCents, locale, cfg.currency),
+      amountWithStatus,
       colTotal - 3,
       y + 2,
       { align: "right" },

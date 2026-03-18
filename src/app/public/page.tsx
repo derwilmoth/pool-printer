@@ -190,6 +190,8 @@ export default function PublicPage() {
     }
   };
 
+  const isCreditTransaction = (type: string) => type === "deposit";
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -353,11 +355,13 @@ export default function PublicPage() {
                           <TableCell>{typeLabel(tx.type)}</TableCell>
                           <TableCell
                             className={
-                              tx.amount >= 0 ? "text-green-600" : "text-red-600"
+                              isCreditTransaction(tx.type)
+                                ? "text-green-600"
+                                : "text-red-600"
                             }
                           >
-                            {tx.amount >= 0 ? "+" : ""}
-                            {formatCurrency(tx.amount)}
+                            {isCreditTransaction(tx.type) ? "+" : "-"}
+                            {formatCurrency(Math.abs(tx.amount))}
                           </TableCell>
                           <TableCell>
                             {tx.type === "print_bw" || tx.type === "print_color"
