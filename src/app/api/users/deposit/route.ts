@@ -20,12 +20,23 @@ export async function POST(request: Request) {
     const db = getDb();
 
     // Check if user exists, create if not
-    let user = db.prepare("SELECT userId, balance FROM users WHERE userId = ?").get(userId) as
+    let user = db
+      .prepare("SELECT userId, balance FROM users WHERE userId = ? AND account_state = 'active'")
+      .get(userId) as
       | { userId: string; balance: number }
       | undefined;
 
     if (!user) {
-      db.prepare("INSERT INTO users (userId, balance, is_free_account) VALUES (?, 0, 0)").run(userId);
+      const pendingDeletion = db
+        .prepare("SELECT userId FROM users WHERE userId = ? AND account_state = 'deletion_requested'")
+        .get(userId);
+      if (pendingDeletion) {
+        return NextResponse.json({ error: "User is pending deletion" }, { status: 409 });
+      }
+
+      db.prepare(
+        "INSERT INTO users (userId, balance, is_free_account, account_state, deletion_requested_at, deletion_expires_at, deletion_requested_by) VALUES (?, 0, 0, 'active', NULL, NULL, NULL)",
+      ).run(userId);
       user = { userId, balance: 0 };
     }
 

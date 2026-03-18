@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const transactionId = searchParams.get("id");
     const type = searchParams.get("type");
     const status = searchParams.get("status");
+    const includeInactive = searchParams.get("includeInactive") === "1";
     const sortBy = searchParams.get("sortBy") || "timestamp";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -47,6 +48,10 @@ export async function GET(request: Request) {
       params.push(status);
     }
 
+    if (!includeInactive) {
+      conditions.push("u.account_state = 'active'");
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // Validate sort column to prevent SQL injection
@@ -56,7 +61,12 @@ export async function GET(request: Request) {
 
     // Get total count
     const countResult = db
-      .prepare(`SELECT COUNT(*) as total FROM transactions t ${whereClause}`)
+      .prepare(
+        `SELECT COUNT(*) as total
+         FROM transactions t
+         JOIN users u ON u.userId = t.userId
+         ${whereClause}`,
+      )
       .get(...params) as { total: number };
 
     // Get transactions
@@ -64,6 +74,7 @@ export async function GET(request: Request) {
       .prepare(
         `SELECT t.id, t.userId, t.amount, t.pages, t.type, t.status, t.paymentMethod, t.description, t.timestamp
          FROM transactions t
+         JOIN users u ON u.userId = t.userId
          ${whereClause}
          ORDER BY t.${safeSort} ${safeOrder}
          LIMIT ? OFFSET ?`

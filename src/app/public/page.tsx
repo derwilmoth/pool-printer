@@ -44,6 +44,9 @@ interface PublicAccount {
   userId?: string;
   balance?: number;
   is_free_account?: number;
+  account_state?: "active" | "deletion_requested";
+  deletion_requested_at?: string | null;
+  deletion_expires_at?: string | null;
   error?: string;
   hint?: string;
 }
@@ -149,6 +152,35 @@ export default function PublicPage() {
       toast.error(t("public.accountCreateFailed"));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleAccountDeletionAction = async (action: "request" | "restore") => {
+    try {
+      const res = await fetch("/api/public/account-deletion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed account deletion action");
+      }
+
+      toast.success(
+        action === "request"
+          ? t("public.deletionRequested")
+          : t("public.accountRestored"),
+      );
+      await fetchAccount();
+    } catch (error) {
+      console.error("Failed account deletion action:", error);
+      toast.error(
+        action === "request"
+          ? t("public.deletionRequestFailed")
+          : t("public.restoreFailed"),
+      );
     }
   };
 
@@ -313,21 +345,65 @@ export default function PublicPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    {t("users.userId")}
-                  </p>
-                  <p className="font-medium">{account.userId}</p>
+              <div className="space-y-3">
+                {account.account_state === "deletion_requested" ? (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/20 dark:border-amber-800">
+                    <p className="font-medium">
+                      {t("public.deletionPendingTitle")}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("public.deletionPendingDesc")}
+                    </p>
+                    {account.deletion_expires_at ? (
+                      <p className="text-sm mt-2">
+                        {t("public.restoreUntil", {
+                          date: formatDateTime(account.deletion_expires_at),
+                        })}
+                      </p>
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      className="mt-3"
+                      onClick={() => handleAccountDeletionAction("restore")}
+                    >
+                      {t("public.restoreAccount")}
+                    </Button>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border p-3">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      {t("users.userId")}
+                    </p>
+                    <p className="font-medium">{account.userId}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      {t("common.balance")}
+                    </p>
+                    <p className="font-medium">
+                      {formatCurrency(account.balance || 0)}
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    {t("common.balance")}
-                  </p>
-                  <p className="font-medium">
-                    {formatCurrency(account.balance || 0)}
-                  </p>
-                </div>
+
+                {account.account_state === "active" ? (
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                    <p className="font-medium">
+                      {t("public.requestDeletionTitle")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("public.requestDeletionWarning")}
+                    </p>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleAccountDeletionAction("request")}
+                    >
+                      {t("public.requestDeletion")}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             )}
           </CardContent>

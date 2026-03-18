@@ -22,12 +22,34 @@ export async function POST(request: Request) {
     const db = getDb();
 
     const existingUser = db
-      .prepare("SELECT userId, balance, is_free_account FROM users WHERE userId = ?")
+      .prepare(
+        "SELECT userId, balance, is_free_account, account_state FROM users WHERE userId = ?",
+      )
       .get(userId) as
-      | { userId: string; balance: number; is_free_account: number }
+      | { userId: string; balance: number; is_free_account: number; account_state: string }
       | undefined;
 
     if (existingUser) {
+      if (existingUser.account_state === "deletion_requested") {
+        db.prepare(
+          `UPDATE users
+           SET account_state = 'active',
+               deletion_requested_at = NULL,
+               deletion_expires_at = NULL,
+               deletion_requested_by = NULL
+           WHERE userId = ?`,
+        ).run(userId);
+
+        return NextResponse.json({
+          created: false,
+          restored: true,
+          source: resolved.source,
+          userId: existingUser.userId,
+          balance: existingUser.balance,
+          is_free_account: existingUser.is_free_account,
+        });
+      }
+
       return NextResponse.json({
         created: false,
         source: resolved.source,

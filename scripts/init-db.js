@@ -29,7 +29,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     userId TEXT PRIMARY KEY,
     balance INTEGER NOT NULL DEFAULT 0,
-    is_free_account INTEGER NOT NULL DEFAULT 0
+    is_free_account INTEGER NOT NULL DEFAULT 0,
+    account_state TEXT NOT NULL DEFAULT 'active',
+    deletion_requested_at DATETIME DEFAULT NULL,
+    deletion_expires_at DATETIME DEFAULT NULL,
+    deletion_requested_by TEXT DEFAULT NULL
   );
 
   CREATE TABLE IF NOT EXISTS transactions (
@@ -49,6 +53,9 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  CREATE INDEX IF NOT EXISTS idx_users_account_state_expiry
+    ON users(account_state, deletion_expires_at);
 `);
 
 console.log("Tables created.");

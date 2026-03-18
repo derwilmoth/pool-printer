@@ -51,6 +51,8 @@ interface User {
   userId: string;
   balance: number;
   is_free_account: number;
+  account_state?: "active" | "deletion_requested";
+  deletion_expires_at?: string | null;
 }
 
 interface Transaction {
@@ -84,29 +86,35 @@ export default function UsersPage() {
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeDescription, setChargeDescription] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userStateFilter, setUserStateFilter] = useState<
+    "active" | "deletion_requested"
+  >("active");
 
-  const searchUsers = useCallback(async (query?: string) => {
-    setLoadingUsers(true);
-    try {
-      const searchVal = (query ?? "").toLowerCase();
-      const url = searchVal
-        ? `/api/users?search=${encodeURIComponent(searchVal)}`
-        : "/api/users";
-      const res = await fetch(url);
-      const data = await res.json();
-      setUsers(data);
-    } catch (error) {
-      console.error("Failed to search users:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, []);
+  const searchUsers = useCallback(
+    async (query?: string) => {
+      setLoadingUsers(true);
+      try {
+        const searchVal = (query ?? "").toLowerCase();
+        const url = searchVal
+          ? `/api/users?state=${userStateFilter}&search=${encodeURIComponent(searchVal)}`
+          : `/api/users?state=${userStateFilter}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        setUsers(data);
+      } catch (error) {
+        console.error("Failed to search users:", error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    },
+    [userStateFilter],
+  );
 
   const fetchUserTransactions = useCallback(async (userId: string) => {
     setLoadingUserTransactions(true);
     try {
       const res = await fetch(
-        `/api/transactions?userId=${encodeURIComponent(userId)}&exact=1&limit=20`,
+        `/api/transactions?userId=${encodeURIComponent(userId)}&exact=1&limit=20&includeInactive=1`,
       );
       const data = await res.json();
       setUserTransactions(data.transactions || []);
@@ -294,7 +302,7 @@ export default function UsersPage() {
         body: JSON.stringify({ userId }),
       });
       if (res.ok) {
-        toast.success(t("toast.userDeleted", { userId }));
+        toast.success(t("toast.userDeletionRequested", { userId }));
         setSelectedUser(null);
         clearSelectedUserId();
         searchUsers(searchQuery);
@@ -303,6 +311,26 @@ export default function UsersPage() {
       }
     } catch {
       toast.error(t("toast.userDeleteFailed"));
+    }
+  };
+
+  const handleRestoreUser = async (userId: string) => {
+    try {
+      const res = await fetch("/api/users/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (res.ok) {
+        toast.success(t("toast.userRestored", { userId }));
+        setSelectedUser(null);
+        clearSelectedUserId();
+        searchUsers(searchQuery);
+      } else {
+        toast.error(t("toast.userRestoreFailed"));
+      }
+    } catch {
+      toast.error(t("toast.userRestoreFailed"));
     }
   };
 
@@ -394,6 +422,31 @@ export default function UsersPage() {
       </div>
 
       {/* Search */}
+      <div className="flex gap-2">
+        <Button
+          variant={userStateFilter === "active" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setUserStateFilter("active");
+            setSelectedUser(null);
+          }}
+        >
+          {t("users.activeTab")}
+        </Button>
+        <Button
+          variant={
+            userStateFilter === "deletion_requested" ? "default" : "outline"
+          }
+          size="sm"
+          onClick={() => {
+            setUserStateFilter("deletion_requested");
+            setSelectedUser(null);
+          }}
+        >
+          {t("users.deletionRequestedTab")}
+        </Button>
+      </div>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -438,11 +491,23 @@ export default function UsersPage() {
                     <Badge variant="secondary">
                       {t("users.freeAccountBadge")}
                     </Badge>
+                  ) : user.account_state === "deletion_requested" ? (
+                    <Badge variant="outline">
+                      {t("users.deletionRequestedBadge")}
+                    </Badge>
                   ) : null}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {t("common.balance")}: {formatCurrency(user.balance)}
                 </p>
+                {user.account_state === "deletion_requested" &&
+                user.deletion_expires_at ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("users.restoreUntil", {
+                      date: formatDateTime(user.deletion_expires_at),
+                    })}
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
           ))}
@@ -480,32 +545,55 @@ export default function UsersPage() {
               </DialogHeader>
 
               <div className="space-y-6 pt-2">
+                {selectedUser.account_state === "deletion_requested" &&
+                selectedUser.deletion_expires_at ? (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:bg-amber-950/20 dark:border-amber-800">
+                    {t("users.restoreUntil", {
+                      date: formatDateTime(selectedUser.deletion_expires_at),
+                    })}
+                  </div>
+                ) : null}
+
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleFreeAccount(selectedUser)}
-                  >
-                    {selectedUser.is_free_account ? (
-                      <>
-                        <UserX className="h-4 w-4 mr-2" />{" "}
-                        {t("users.makeNormal")}
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="h-4 w-4 mr-2" />{" "}
-                        {t("users.makeFree")}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteConfirmOpen(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" /> {t("users.deleteUser")}
-                  </Button>
+                  {selectedUser.account_state === "active" ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleFreeAccount(selectedUser)}
+                      >
+                        {selectedUser.is_free_account ? (
+                          <>
+                            <UserX className="h-4 w-4 mr-2" />{" "}
+                            {t("users.makeNormal")}
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="h-4 w-4 mr-2" />{" "}
+                            {t("users.makeFree")}
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteConfirmOpen(true)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />{" "}
+                        {t("users.deleteUser")}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRestoreUser(selectedUser.userId)}
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />{" "}
+                      {t("users.restoreUser")}
+                    </Button>
+                  )}
                   <AlertDialog
                     open={deleteConfirmOpen}
                     onOpenChange={setDeleteConfirmOpen}
@@ -536,72 +624,83 @@ export default function UsersPage() {
                   </AlertDialog>
                 </div>
 
-                {/* Deposit */}
-                <div className="space-y-2">
-                  <Label>{t("users.addDeposit")}</Label>
-                  <div className="flex gap-2 mb-2">
-                    <Button
-                      variant={paymentMethod === "cash" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("cash")}
-                    >
-                      {t("users.paymentCash")}
-                    </Button>
-                    <Button
-                      variant={paymentMethod === "card" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("card")}
-                    >
-                      {t("users.paymentCard")}
-                    </Button>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder={t("users.depositPlaceholder")}
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                    />
-                    <Button
-                      onClick={handleDeposit}
-                      disabled={loading || !depositAmount}
-                    >
-                      <Euro className="h-4 w-4 mr-2" /> {t("common.deposit")}
-                    </Button>
-                  </div>
-                </div>
+                {selectedUser.account_state === "active" ? (
+                  <>
+                    {/* Deposit */}
+                    <div className="space-y-2">
+                      <Label>{t("users.addDeposit")}</Label>
+                      <div className="flex gap-2 mb-2">
+                        <Button
+                          variant={
+                            paymentMethod === "cash" ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => setPaymentMethod("cash")}
+                        >
+                          {t("users.paymentCash")}
+                        </Button>
+                        <Button
+                          variant={
+                            paymentMethod === "card" ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => setPaymentMethod("card")}
+                        >
+                          {t("users.paymentCard")}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          placeholder={t("users.depositPlaceholder")}
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                        />
+                        <Button
+                          onClick={handleDeposit}
+                          disabled={loading || !depositAmount}
+                        >
+                          <Euro className="h-4 w-4 mr-2" />{" "}
+                          {t("common.deposit")}
+                        </Button>
+                      </div>
+                    </div>
 
-                {/* Manual Charge */}
-                <div className="space-y-2">
-                  <Label>{t("users.manualCharge")}</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={t("users.chargeDescriptionPlaceholder")}
-                      value={chargeDescription}
-                      onChange={(e) => setChargeDescription(e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder={t("users.chargePlaceholder")}
-                      value={chargeAmount}
-                      onChange={(e) => setChargeAmount(e.target.value)}
-                      className="w-40 shrink-0"
-                    />
-                    <Button
-                      onClick={handleCharge}
-                      disabled={loading || !chargeAmount || !chargeDescription}
-                      variant="destructive"
-                      className="shrink-0"
-                    >
-                      <MinusCircle className="h-4 w-4 mr-2" />{" "}
-                      {t("users.charge")}
-                    </Button>
-                  </div>
-                </div>
+                    {/* Manual Charge */}
+                    <div className="space-y-2">
+                      <Label>{t("users.manualCharge")}</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={t("users.chargeDescriptionPlaceholder")}
+                          value={chargeDescription}
+                          onChange={(e) => setChargeDescription(e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          placeholder={t("users.chargePlaceholder")}
+                          value={chargeAmount}
+                          onChange={(e) => setChargeAmount(e.target.value)}
+                          className="w-40 shrink-0"
+                        />
+                        <Button
+                          onClick={handleCharge}
+                          disabled={
+                            loading || !chargeAmount || !chargeDescription
+                          }
+                          variant="destructive"
+                          className="shrink-0"
+                        >
+                          <MinusCircle className="h-4 w-4 mr-2" />{" "}
+                          {t("users.charge")}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
 
                 {/* Recent Transactions */}
                 <div className="space-y-2">

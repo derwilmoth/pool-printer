@@ -39,6 +39,7 @@ export async function GET(request: Request) {
         WHERE t.type IN ('print_bw', 'print_color')
           AND t.timestamp >= ${dateFilter}
           AND u.is_free_account = 0
+          AND u.account_state = 'active'
           AND t.status IN ('completed', 'pending')`
       )
       .get() as {
@@ -55,10 +56,12 @@ export async function GET(request: Request) {
         `SELECT
           COUNT(*) as totalDeposits,
           COALESCE(SUM(amount), 0) as totalDepositAmount
-        FROM transactions
-        WHERE type = 'deposit'
-          AND status = 'completed'
-          AND timestamp >= ${dateFilter}`
+        FROM transactions t
+        JOIN users u ON t.userId = u.userId
+        WHERE t.type = 'deposit'
+          AND t.status = 'completed'
+          AND t.timestamp >= ${dateFilter}
+          AND u.account_state = 'active'`
       )
       .get() as { totalDeposits: number; totalDepositAmount: number };
 
@@ -68,10 +71,12 @@ export async function GET(request: Request) {
         `SELECT
           COUNT(*) as totalManualJobs,
           COALESCE(SUM(amount), 0) as totalManualRevenue
-        FROM transactions
-        WHERE type = 'manual'
-          AND status IN ('completed', 'pending')
-          AND timestamp >= ${dateFilter}`
+        FROM transactions t
+        JOIN users u ON t.userId = u.userId
+        WHERE t.type = 'manual'
+          AND t.status IN ('completed', 'pending')
+          AND t.timestamp >= ${dateFilter}
+          AND u.account_state = 'active'`
       )
       .get() as { totalManualJobs: number; totalManualRevenue: number };
 

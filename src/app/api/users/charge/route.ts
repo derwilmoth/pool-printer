@@ -25,7 +25,9 @@ export async function POST(request: Request) {
     const db = getDb();
 
     // Check if user exists
-    const user = db.prepare("SELECT userId, balance FROM users WHERE userId = ?").get(userId) as
+    const user = db
+      .prepare("SELECT userId, balance FROM users WHERE userId = ? AND account_state = 'active'")
+      .get(userId) as
       | { userId: string; balance: number }
       | undefined;
 
