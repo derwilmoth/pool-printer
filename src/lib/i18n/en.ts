@@ -105,7 +105,9 @@ const en: Record<TranslationKey, string> = {
 
   // Jobs
   "jobs.title": "Print Jobs & Transactions",
-  "jobs.filterPlaceholder": "Filter by User ID...",
+  "jobs.searchPlaceholder": "Enter search term...",
+  "jobs.searchTypeId": "Transaction ID",
+  "jobs.searchTypeUserId": "User ID",
   "jobs.allTypes": "All Types",
   "jobs.allStatus": "All Status",
   "jobs.noTransactions": "No transactions found.",

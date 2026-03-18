@@ -103,7 +103,9 @@ const de = {
 
   // Jobs
   "jobs.title": "Druckaufträge & Transaktionen",
-  "jobs.filterPlaceholder": "Nach Benutzer-ID filtern...",
+  "jobs.searchPlaceholder": "Suchbegriff eingeben...",
+  "jobs.searchTypeId": "Transaktions-ID",
+  "jobs.searchTypeUserId": "Benutzer-ID",
   "jobs.allTypes": "Alle Typen",
   "jobs.allStatus": "Alle Status",
   "jobs.noTransactions": "Keine Transaktionen gefunden.",

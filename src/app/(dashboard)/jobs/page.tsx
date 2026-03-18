@@ -67,6 +67,7 @@ export default function JobsPage() {
     totalPages: 0,
   });
   const [filterUserId, setFilterUserId] = useState("");
+  const [searchType, setSearchType] = useState("id");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -79,7 +80,13 @@ export default function JobsPage() {
           page: String(page),
           limit: String(pagination.limit),
         });
-        if (filterUserId) params.set("userId", filterUserId.toLowerCase());
+        if (filterUserId) {
+          if (searchType === "id") {
+            params.set("id", filterUserId);
+          } else {
+            params.set("userId", filterUserId.toLowerCase());
+          }
+        }
         if (filterType !== "all") params.set("type", filterType);
         if (filterStatus !== "all") params.set("status", filterStatus);
 
@@ -95,7 +102,7 @@ export default function JobsPage() {
         setLoading(false);
       }
     },
-    [filterUserId, filterType, filterStatus, pagination.limit],
+    [filterUserId, searchType, filterType, filterStatus, pagination.limit],
   );
 
   useEffect(() => {
@@ -177,10 +184,19 @@ export default function JobsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
+        <Select value={searchType} onValueChange={setSearchType}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="id">{t("jobs.searchTypeId")}</SelectItem>
+            <SelectItem value="userId">{t("jobs.searchTypeUserId")}</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t("jobs.filterPlaceholder")}
+            placeholder={t("jobs.searchPlaceholder")}
             value={filterUserId}
             onChange={(e) => setFilterUserId(e.target.value)}
             className="pl-10"

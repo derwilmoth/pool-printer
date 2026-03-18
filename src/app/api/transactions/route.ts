@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const userId = searchParams.get("userId")?.toLowerCase() || null;
+    const transactionId = searchParams.get("id");
     const type = searchParams.get("type");
     const status = searchParams.get("status");
     const sortBy = searchParams.get("sortBy") || "timestamp";
@@ -19,7 +20,13 @@ export async function GET(request: Request) {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
-    if (userId) {
+    if (transactionId) {
+      const idNum = parseInt(transactionId, 10);
+      if (!isNaN(idNum)) {
+        conditions.push("t.id = ?");
+        params.push(idNum);
+      }
+    } else if (userId) {
       const exact = searchParams.get("exact") === "1";
       if (exact) {
         conditions.push("t.userId = ?");
