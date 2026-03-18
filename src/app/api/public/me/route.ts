@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         {
           resolved: false,
           error: "Windows username could not be resolved",
-          hint: "Provide one of the expected user headers via proxy/IIS, or access via localhost so server fallback can be used.",
+          hint: "Provide one of the expected user headers via SSO proxy/IIS (for example: x-remote-user).",
         },
         { status: 400 },
       );
