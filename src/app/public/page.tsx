@@ -4,13 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -35,6 +29,10 @@ import {
   Moon,
   RefreshCw,
   Sun,
+  Wallet,
+  ReceiptText,
+  User,
+  Euro,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
@@ -261,8 +259,10 @@ export default function PublicPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("public.accountTitle")}</CardTitle>
-            <CardDescription>{t("public.accountDescription")}</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-muted-foreground" />
+              {t("public.accountTitle")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading ? (
@@ -296,13 +296,13 @@ export default function PublicPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                     {t("users.userId")}
                   </p>
                   <p className="font-medium">{account.userId}</p>
                 </div>
                 <div className="rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
                     {t("common.balance")}
                   </p>
                   <p className="font-medium">
@@ -317,10 +317,10 @@ export default function PublicPage() {
         {account?.resolved && account.exists && (
           <Card>
             <CardHeader>
-              <CardTitle>{t("public.transactionsTitle")}</CardTitle>
-              <CardDescription>
-                {t("public.transactionsDescription")}
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <ReceiptText className="h-5 w-5 text-muted-foreground" />
+                {t("public.transactionsTitle")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="border rounded-lg">
