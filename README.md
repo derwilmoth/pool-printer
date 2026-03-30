@@ -217,16 +217,45 @@ pm2 resurrect
 
 #### 9.3 Druckfluss
 
+**Normal (Erfolgreich):**
+
 1. Print Middleware erkennt Job im Spooler
 2. `/api/print/reserve` prüft:
    - Nutzerkonto vorhanden?
    - `account_state = active`?
    - ausreichenendes Guthaben oder Free-Account?
-3. Bei Erfolg: Job wird freigegeben, Transaktion `pending`
-4. Bei erfolgreichem Druck: `/api/print/confirm` -> `completed`
-5. Bei Fehler/Timeout: `/api/print/cancel` -> Refund + `refunded`
+3. Bei Erfolg: Job wird **sofort freigegeben** (Drucker unpausiert), Transaktion `pending` angelegt
+4. Bei erfolgreichem Druck: `/api/print/confirm` -> Transaktion `completed`
+5. Drucker wird wieder pausiert, falls keine weiteren Aufträge ausstehen
 
-#### 9.4 Löschantrag (7 Tage)
+**Fehler: Nutzer nicht vorhanden oder unzureichendes Guthaben:**
+
+- `/api/print/reserve` lehnt ab mit `allowed: false`
+- Job wird **sofort und direkt aus der Print Queue gelöscht** (nicht in die Queue genommen)
+- **Keine Transaktion** wird angelegt
+- **Keine Refund-Logik notwendig** (nie reserviert)
+- Middleware loggt: `[DENIED] Job #X from userId: Insufficient balance / User not found`
+
+**Fehler während des Drucks (nach Freigabe):**
+
+- Drucker ist offline, Papierfehler, Job hängt, oder Timeout (>5 Min):
+  - `/api/print/cancel` wird aufgerufen -> Transaktion `refunded`
+  - Guthaben wird dem Nutzer rückgängig gemacht
+- Bei kritischem Fehler nach Druckbeginn: `/api/print/confirm` wird nicht aufgerufen, stattdessen Refund
+
+#### 9.5 Fehlerszenarien und Systemverhalten
+
+| Szenario                       | Verhalten                                                          | Folge                                        |
+| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------------- |
+| Nutzer existiert nicht         | Job wird sofort gelöscht (vor Freigabe)                            | Nicht sichtbar für User, kein Support-Ticket |
+| Guthaben unzureichend          | Job wird sofort gelöscht (vor Freigabe)                            | ——                                           |
+| Nutzer in `deletion_requested` | Job wird abgelehnt                                                 | ——                                           |
+| Free-Account Nutzer            | Job wird freigegeben (keine Kosten)                                | Transaktion `completed` ohne Belastung       |
+| Druckfehler vor Abschluss      | Job wird storniert, Guthaben refundet                              | Transaktion `refunded`                       |
+| Job hängt >5 Min               | Timeout, Job wird gelöscht, Guthaben refundet                      | Transaktion `refunded`                       |
+| Printer offline                | Job bleibt im Spooler, wird nach Fehlerbereinigung erneut versucht | Middleware loggt Fehler                      |
+
+#### 9.5 Löschantrag (7 Tage)
 
 - Kein sofortiges Hard-Delete mehr
 - Statuswechsel auf `deletion_requested`
@@ -236,7 +265,26 @@ pm2 resurrect
   - User selbst (`/api/public/account-deletion` mit `restore=true`)
 - Nach Ablauf werden User + zugehörige Transaktionen automatisch entfernt
 
-### 10) API-Übersicht (wichtigste Routen)
+### 11) Print Middleware Logging und Debugging
+
+Die Print Middleware gibt ausführliches Logging aus. Bei der Ausführung sehen Sie Meldungen wie:
+
+```
+[NEW] Job #123 from maxmustermann on PoolDrucker_SW (10 pages x 1 copies = 10 total, bw, status: Paused)
+[DENIED] Job #123 from maxmustermann: Insufficient balance
+        Balance: 50, Required: 100
+[REMOVED] Job #123 has been deleted from PoolDrucker_SW (user not found or insufficient balance)
+
+[RESUMED] Job #456 - Transaction #789
+[COMPLETED] Job #456 - Transaction #789 confirmed
+[CANCELLED] Job #456 - Error: Offline, Refunded
+[TIMEOUT] Job #456 - Stuck for 305s
+[REFUNDED] Job #456 - Timed out, refunded
+```
+
+Wichtiger Hinweis: **Abgelehnte Aufträge werden nicht in Logs des Systems gespeichert** (nur in der Console der Middleware). Dies ist beabsichtigt, um die Datenbankgröße zu reduzieren.
+
+### 11) API-Übersicht (wichtigste Routen)
 
 Public:
 
@@ -299,24 +347,24 @@ The runtime is intentionally split into separate components:
    - API key protection for `/api/print/*`
    - Optional LAN IP restriction (`LAN_ONLY`)
 
-3. **Print middleware (`print-middleware/index.ts`)**
-   - Polls Windows spooler
-   - Calls reserve/confirm/cancel API endpoints
-   - Handles timeout/error refund behavior
+3. **Print Middleware (`print-middleware/index.ts`)**
+   - Polls Windows Print Spooler every 3 seconds (configurable)
+   - Reserves print costs before printing (`/api/print/reserve`)
+   - Confirms after success (`/api/print/confirm`) or cancels/refunds (`/api/print/cancel`)
 
 ### 3) Requirements
 
-- Windows host (for print spooler controls)
+- Windows (for print spooler control)
 - Node.js 20+
 - npm
-- Access rights for target print queues
-- Permission to read/resume/pause print jobs
+- Access to target print queues
+- Rights to read/resume/pause PrintJobs
 
-Optional:
+Optional/Production:
 
-- PM2 for process management and auto-restart
+- PM2 for process management
 
-### 4) Initial setup
+### 4) Initial Setup
 
 1. Install dependencies:
 
@@ -324,7 +372,7 @@ Optional:
 npm install
 ```
 
-2. Create env file:
+2. Create environment file:
 
 ```bash
 copy .env.example .env.local
@@ -341,50 +389,78 @@ copy .env.example .env.local
 npm run db:init
 ```
 
-Notes:
+Note:
 
-- SQLite DB is created at `data/pool-printer.db`
-- Default supervisor credentials: `root / root`
+- `db:init` creates SQLite file at `data/pool-printer.db`
+- Default supervisor created: `root / root`
 
 ### 5) Configuration (`.env.local`)
 
 Required:
 
-- `NEXTAUTH_SECRET`
-- `API_KEY`
+- `NEXTAUTH_SECRET` – Secret for NextAuth/JWT
+- `API_KEY` – shared key between app and print middleware
 
-Common optional settings:
+Common Options:
 
-- `NEXTAUTH_URL`
-- `LAN_ONLY`
-- `POLL_INTERVAL`
-- `PRINTER_BW`, `PRINTER_COLOR`
-- `NEXT_PUBLIC_INVOICE_*`
+- `NEXTAUTH_URL` – App base URL (default: `http://localhost:3000`)
+- `LAN_ONLY` – `1` = loopback + private networks only, `0` = open
+- `POLL_INTERVAL` – Print middleware polling interval (ms)
+- `PRINTER_BW`, `PRINTER_COLOR` – printer queue names
+- `NEXT_PUBLIC_INVOICE_*` – invoice/sender data for PDF
 
-### 6) Database model
+### 6) Database Structure
 
-Tables:
+The app uses SQLite with the following tables:
 
-- `supervisors` (`username`, `password_hash`)
-- `users` (`balance`, `is_free_account`, `account_state`, deletion metadata)
-- `transactions` (amount/pages/type/status/payment/timestamp)
-- `settings` (pricing + session timeout)
+1. `supervisors`
 
-Default settings:
+- `id` (PK)
+- `username` (unique)
+- `password_hash`
+
+2. `users`
+
+- `userId` (PK)
+- `balance` (Integer, cents)
+- `is_free_account` (`0/1`)
+- `account_state` (`active` | `deletion_requested`)
+- `deletion_requested_at`
+- `deletion_expires_at`
+- `deletion_requested_by`
+
+3. `transactions`
+
+- `id` (PK)
+- `userId` (FK -> `users.userId`)
+- `amount` (Integer, cents)
+- `pages`
+- `type` (`deposit` | `print_bw` | `print_color` | `manual`)
+- `description`
+- `status` (`pending` | `completed` | `failed` | `refunded`)
+- `paymentMethod`
+- `timestamp`
+
+4. `settings`
+
+- `key` (PK)
+- `value`
+
+Default values in `settings`:
 
 - `price_bw = 5`
 - `price_color = 20`
 - `session_timeout = 60`
 
-Runtime cleanup:
+Important runtime logic:
 
-- Expired deletion requests are automatically purged:
-  - matching `transactions` deleted
-  - matching `users` deleted
+- Expired deletion requests are automatically cleaned up on database access:
+  - affected `transactions` deleted
+  - affected `users` deleted
 
-### 7) Production run
+### 7) Starting in Production
 
-1. Build:
+1. Create build:
 
 ```bash
 npm run build
@@ -396,66 +472,126 @@ npm run build
 npm run start
 ```
 
-3. Start print middleware:
+3. Start Print Middleware separately:
 
 ```bash
 npx tsx print-middleware/index.ts
 ```
 
-### 8) PM2 auto-start
+### 8) PM2 Autostart
 
-Create PM2 processes:
+#### 8.1 Create processes in PM2
 
 ```bash
 pm2 start npm --name pool-app -- run start
 pm2 start npx --name pool-print -- tsx print-middleware/index.ts
 ```
 
-Persist process list:
+#### 8.2 Save process list
 
 ```bash
 pm2 save
 ```
 
-Enable startup (Windows):
+#### 8.3 Enable autostart (Windows)
 
-- Use PM2 with a startup task/service pattern and run `pm2 resurrect` after boot.
+- PM2 itself manages processes, but boot autostart is typically implemented via Windows Task Scheduler/Service
+- Practice: Run PM2 at system startup and then call `pm2 resurrect`
 
-Manual restore example:
+Example (manual/testing):
 
 ```bash
 pm2 resurrect
 ```
 
-### 9) Operational flows
+### 9) Operational Logic (End-to-End)
 
-Supervisor flow:
+#### 9.1 Supervisor Area
 
-- Login on `/login`
-- Manage users, pricing, balances, manual transactions, restore requests
+- Login via `/login`
+- Dashboard shows statistics including manual transactions/revenue
+- Users page has two views:
+  - `Active`
+  - `Deletion Requests`
+- Users with `deletion_requested` are excluded from normal operations
 
-Public flow:
+#### 9.2 Self-Service (`/public`)
 
 - User enters their user ID directly
-- Create account if missing
-- View balance and own transactions
-- Request deletion or restore within 7 days
+- If account doesn't exist: can be created
+- Account balance + transactions visible
+- Deletion request can be submitted by user and reverted within 7 days
 
-Print flow:
+#### 9.3 Print Flow
 
-1. Middleware detects queued print job
-2. `reserve` validates active account + balance
-3. Job proceeds with pending transaction
-4. `confirm` on success, `cancel` + refund on failure/timeout
+**Normal (Successful):**
 
-Deletion-request flow:
+1. Print Middleware detects job in spooler
+2. `/api/print/reserve` checks:
+   - User account exists?
+   - `account_state = active`?
+   - Sufficient balance or free account?
+3. On success: Job is **immediately released** (printer unpaused), transaction `pending` created
+4. On successful print: `/api/print/confirm` -> Transaction `completed`
+5. Printer paused again if no further jobs pending
 
-- Soft state `deletion_requested` (no immediate hard delete)
-- Account excluded from active operations
-- Restorable by supervisor or user during 7-day window
-- Automatically purged after expiry
+**Error: User not found or insufficient balance:**
 
-### 10) Key API routes
+- `/api/print/reserve` rejects with `allowed: false`
+- Job is **immediately and directly deleted from print queue** (not queued)
+- **No transaction** created
+- **No refund logic necessary** (never reserved)
+- Middleware logs: `[DENIED] Job #X from userId: Insufficient balance / User not found`
+
+**Error during print (after release):**
+
+- Printer offline, paper jam, job stuck, or timeout (>5 min):
+  - `/api/print/cancel` called -> Transaction `refunded`
+  - User balance is refunded
+- Critical error after print start: `/api/print/confirm` not called, refund instead
+
+#### 9.4 Error Scenarios and System Behavior
+
+| Scenario                      | Behavior                                          | Consequence                            |
+| ----------------------------- | ------------------------------------------------- | -------------------------------------- |
+| User does not exist           | Job deleted immediately (before release)          | Not visible to user, no support ticket |
+| Insufficient balance          | Job deleted immediately (before release)          | ——                                     |
+| User in `deletion_requested`  | Job rejected                                      | ——                                     |
+| Free account user             | Job released (no charge)                          | Transaction `completed` without debit  |
+| Print error before completion | Job cancelled, balance refunded                   | Transaction `refunded`                 |
+| Job stuck >5 min              | Timeout, job deleted, balance refunded            | Transaction `refunded`                 |
+| Printer offline               | Job remains in spooler, retried after error clear | Middleware logs error                  |
+
+#### 9.5 Deletion Request (7 Days)
+
+- No immediate hard delete
+- Status change to `deletion_requested`
+- `deletion_expires_at = requested_at + 7 days`
+- Restoration possible via:
+  - Supervisor (`/api/users/restore`)
+  - User self (`/api/public/account-deletion` with `restore=true`)
+- After expiry, user + associated transactions auto-deleted
+
+### 10) Print Middleware Logging and Debugging
+
+The print middleware outputs detailed logging. During execution you will see messages like:
+
+```
+[NEW] Job #123 from maxmustermann on PoolDrucker_SW (10 pages x 1 copies = 10 total, bw, status: Paused)
+[DENIED] Job #123 from maxmustermann: Insufficient balance
+        Balance: 50, Required: 100
+[REMOVED] Job #123 has been deleted from PoolDrucker_SW (user not found or insufficient balance)
+
+[RESUMED] Job #456 - Transaction #789
+[COMPLETED] Job #456 - Transaction #789 confirmed
+[CANCELLED] Job #456 - Error: Offline, Refunded
+[TIMEOUT] Job #456 - Stuck for 305s
+[REFUNDED] Job #456 - Timed out, refunded
+```
+
+Important Note: **Rejected jobs are not stored in system logs** (only in middleware console). This is intentional to reduce database size.
+
+### 11) API Overview (most important routes)
 
 Public:
 
@@ -464,8 +600,9 @@ Public:
 - `GET /api/public/transactions`
 - `POST /api/public/account-deletion`
 
-Supervisor/internal:
+Supervisor/Internal (session required):
 
+- `POST /api/auth/*` (NextAuth)
 - `GET/POST/DELETE /api/users`
 - `POST /api/users/restore`
 - `POST /api/users/deposit`
@@ -475,7 +612,7 @@ Supervisor/internal:
 - `GET /api/stats`
 - `GET/POST /api/settings`
 
-Print middleware:
+Print Middleware (API Key protected):
 
 - `POST /api/print/reserve`
 - `POST /api/print/confirm`
