@@ -32,7 +32,12 @@ export async function POST(request: Request) {
       .get(userId) as { userId: string; balance: number; is_free_account: number } | undefined;
 
     if (!user) {
-      return NextResponse.json({ allowed: false, reason: "User not found" });
+      return NextResponse.json({
+        allowed: false,
+        reason: "User not found or account inactive",
+        balance: 0,
+        required: 0,
+      });
     }
 
     // Free account: allow without logging or deducting

@@ -180,9 +180,12 @@ async function removeJob(printerName: string, jobId: number): Promise<void> {
 
 async function cancelJob(printerName: string, jobId: number): Promise<void> {
   try {
+    // Attempt to remove the print job from the queue
     await runPS(`Remove-PrintJob -PrinterName '${printerName}' -ID ${jobId} -ErrorAction SilentlyContinue`);
-  } catch {
-    // Job may already be gone
+  } catch (error) {
+    // Job may already be gone or in a locked state
+    const errorMsg = error instanceof Error ? error.message.split('\n')[0] : String(error);
+    console.warn(`[CLEANUP] Could not remove job #${jobId} from ${printerName}: ${errorMsg}`);
   }
 }
 
@@ -233,9 +236,11 @@ async function handlePausedJobs(): Promise<void> {
           `[RESUMED] Job #${id} - ${result.isFree ? "FREE" : `Transaction #${result.transactionId}`}`
         );
       } else {
-        // Not allowed - cancel the job
+        // Not allowed - reject and remove the job immediately from the queue
         console.log(`[DENIED] Job #${id} from ${userId}: ${result.reason}`);
+        console.log(`        Balance: ${result.balance || 'N/A'}, Required: ${result.required || 'N/A'}`);
         await cancelJob(job.PrinterName, id);
+        console.log(`[REMOVED] Job #${id} has been deleted from ${job.PrinterName} (user not found or insufficient balance)`);
       }
     } catch (error) {
       console.error(`[ERROR] Failed to process job #${id}:`, error);
