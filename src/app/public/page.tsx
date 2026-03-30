@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,6 +91,7 @@ export default function PublicPage() {
   const [deletionMenuOpen, setDeletionMenuOpen] = useState(false);
   const [deletionConfirmOpen, setDeletionConfirmOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [publicUserId, setPublicUserId] = useState("");
   const [account, setAccount] = useState<PublicAccount | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -100,8 +102,9 @@ export default function PublicPage() {
   });
 
   const fetchTransactions = useCallback(
-    async (page = 1) => {
+    async (userId: string, page = 1) => {
       const params = new URLSearchParams({
+        userId,
         page: String(page),
         limit: String(pagination.limit),
       });
@@ -121,37 +124,75 @@ export default function PublicPage() {
     [pagination.limit],
   );
 
-  const fetchAccount = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/public/me");
-      const data = (await res.json()) as PublicAccount;
-      setAccount(data);
-
-      if (res.ok && data.resolved && data.exists) {
-        await fetchTransactions(1);
-      } else {
+  const fetchAccount = useCallback(
+    async (rawUserId?: string) => {
+      const userId = (rawUserId ?? publicUserId).trim().toLowerCase();
+      if (!userId) {
+        setAccount({ resolved: false, exists: false });
         setTransactions([]);
         setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to load public account:", error);
-      toast.error(t("public.loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchTransactions, t]);
+
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/public/me?userId=${encodeURIComponent(userId)}`,
+        );
+        const data = (await res.json()) as PublicAccount;
+        setAccount(data);
+
+        if (res.ok && data.resolved && data.exists) {
+          await fetchTransactions(userId, 1);
+        } else {
+          setTransactions([]);
+          setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
+        }
+      } catch (error) {
+        console.error("Failed to load public account:", error);
+        toast.error(t("public.loadFailed"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchTransactions, publicUserId, t],
+  );
 
   useEffect(() => {
-    fetchAccount();
+    const storedUserId = window.localStorage.getItem("publicUserId");
+    if (storedUserId) {
+      setPublicUserId(storedUserId);
+      fetchAccount(storedUserId);
+      return;
+    }
+    setLoading(false);
+    setAccount({ resolved: false, exists: false });
   }, [fetchAccount]);
 
+  const handleLoadAccount = async () => {
+    const userId = publicUserId.trim().toLowerCase();
+    if (!userId) {
+      toast.error(t("public.userIdRequired"));
+      return;
+    }
+    window.localStorage.setItem("publicUserId", userId);
+    await fetchAccount(userId);
+  };
+
   const handleCreateAccount = async () => {
+    const userId = account?.userId || publicUserId.trim().toLowerCase();
+    if (!userId) {
+      toast.error(t("public.userIdRequired"));
+      return;
+    }
+
     setCreating(true);
     try {
       const res = await fetch("/api/public/create-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
       });
       const data = await res.json();
 
@@ -160,7 +201,7 @@ export default function PublicPage() {
       }
 
       toast.success(t("public.accountCreated"));
-      await fetchAccount();
+      await fetchAccount(userId);
     } catch (error) {
       console.error("Failed to create account:", error);
       toast.error(t("public.accountCreateFailed"));
@@ -170,11 +211,17 @@ export default function PublicPage() {
   };
 
   const handleAccountDeletionAction = async (action: "request" | "restore") => {
+    const userId = account?.userId || publicUserId.trim().toLowerCase();
+    if (!userId) {
+      toast.error(t("public.userIdRequired"));
+      return;
+    }
+
     try {
       const res = await fetch("/api/public/account-deletion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, userId }),
       });
       const data = await res.json();
 
@@ -187,7 +234,7 @@ export default function PublicPage() {
           ? t("public.deletionRequested")
           : t("public.accountRestored"),
       );
-      await fetchAccount();
+      await fetchAccount(userId);
     } catch (error) {
       console.error("Failed account deletion action:", error);
       toast.error(
@@ -266,7 +313,7 @@ export default function PublicPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchAccount}>
+            <Button variant="outline" size="icon" onClick={handleLoadAccount}>
               <RefreshCw className="h-4 w-4" />
             </Button>
 
@@ -353,11 +400,19 @@ export default function PublicPage() {
                 <p className="text-sm text-muted-foreground">
                   {t("public.userResolveFailedDesc")}
                 </p>
-                {account?.hint && (
-                  <p className="text-xs text-muted-foreground">
-                    {account.hint}
-                  </p>
-                )}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    value={publicUserId}
+                    onChange={(event) =>
+                      setPublicUserId(event.target.value.toLowerCase())
+                    }
+                    placeholder={t("public.userIdPlaceholder")}
+                    className="sm:max-w-xs"
+                  />
+                  <Button onClick={handleLoadAccount}>
+                    {t("public.loadAccount")}
+                  </Button>
+                </div>
               </div>
             ) : !account.exists ? (
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
@@ -573,7 +628,14 @@ export default function PublicPage() {
                       variant="outline"
                       size="icon"
                       disabled={pagination.page <= 1}
-                      onClick={() => fetchTransactions(pagination.page - 1)}
+                      onClick={() =>
+                        account?.userId
+                          ? fetchTransactions(
+                              account.userId,
+                              pagination.page - 1,
+                            )
+                          : undefined
+                      }
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -581,7 +643,14 @@ export default function PublicPage() {
                       variant="outline"
                       size="icon"
                       disabled={pagination.page >= pagination.totalPages}
-                      onClick={() => fetchTransactions(pagination.page + 1)}
+                      onClick={() =>
+                        account?.userId
+                          ? fetchTransactions(
+                              account.userId,
+                              pagination.page + 1,
+                            )
+                          : undefined
+                      }
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

@@ -1,25 +1,22 @@
 import { NextResponse } from "next/server";
 import getDb from "@/lib/db";
-import { resolveWindowsUser } from "@/lib/windows-user";
+import { normalizePublicUserId } from "@/lib/public-user";
 
 export async function GET(request: Request) {
   try {
-    const resolved = resolveWindowsUser(request.headers);
+    const { searchParams } = new URL(request.url);
+    const userId = normalizePublicUserId(searchParams.get("userId"));
 
-    if (!resolved) {
+    if (!userId) {
       return NextResponse.json(
         {
           resolved: false,
-          error: "Windows username could not be resolved",
-          hint: "Provide one of the expected user headers via SSO proxy/IIS (for example: x-remote-user).",
+          error: "userId is required",
+          hint: "Provide userId as query parameter, for example: /api/public/transactions?userId=maxmustermann",
         },
         { status: 400 },
       );
     }
-
-    const userId = resolved.userId;
-
-    const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const offset = (page - 1) * limit;
@@ -42,7 +39,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       resolved: true,
-      source: resolved.source,
       userId,
       transactions,
       pagination: {

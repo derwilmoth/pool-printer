@@ -5,7 +5,6 @@ Sie kombiniert:
 
 - Self-Service für normale Windows-Nutzer (ohne Supervisor-Login)
 - Supervisor-Dashboard für Verwaltung und Kasse
-- Windows SSO Proxy für Benutzerauflösung
 - Print Middleware für automatisierte Spooler-Abrechnung
 
 ---
@@ -33,7 +32,7 @@ Das Projekt läuft bewusst als **Split-Architektur**:
 
 1. **Next.js App**
    - UI + API + SQLite Zugriff
-   - Standard-Port lokal: `3000` (oder intern hinter SSO)
+   - Standard-Port lokal: `3000`
 
 2. **Next.js Proxy (`src/proxy.ts`)**
    - Schützt Dashboard/API per Session
@@ -41,19 +40,14 @@ Das Projekt läuft bewusst als **Split-Architektur**:
    - Schützt `/api/print/*` zusätzlich mit `Authorization: Bearer API_KEY`
    - Optional LAN-Einschränkung (`LAN_ONLY`)
 
-3. **Windows SSO Proxy (`server/windows-sso-proxy.ts`)**
-   - Führt SSPI-Handshake durch (`node-expose-sspi`)
-   - Löst Windows-User auf und setzt Header `x-remote-user`
-   - Leitet Requests an interne Next-App weiter (typisch `127.0.0.1:3100`)
-
-4. **Print Middleware (`print-middleware/index.ts`)**
+3. **Print Middleware (`print-middleware/index.ts`)**
    - Pollt den Windows Spooler
    - Reserviert Druckkosten vor dem Druck (`/api/print/reserve`)
    - Bestätigt nach Erfolg (`/api/print/confirm`) oder storniert/refundet (`/api/print/cancel`)
 
 ### 3) Voraussetzungen
 
-- Windows (für SSPI + Print-Spooler-Steuerung)
+- Windows (für Print-Spooler-Steuerung)
 - Node.js 20+
 - npm
 - Zugriff auf Ziel-Druckerwarteschlangen
@@ -104,10 +98,6 @@ Häufig genutzte Optionen:
 
 - `NEXTAUTH_URL` – Basis-URL der App (Default: `http://localhost:3000`)
 - `LAN_ONLY` – `1` = nur Loopback + private Netze, `0` = offen
-- `SSO_PROXY_PORT` – externer SSO-Port (Default `3000`)
-- `NEXT_INTERNAL_PORT` – interner Next-Port hinter SSO (Default `3100`)
-- `NEXT_INTERNAL_HOST` – Host für internen Next-Prozess (Default `127.0.0.1`)
-- `SSO_PROXY_SKIP_NEXT` – `1` startet Next nicht automatisch im SSO-Prozess
 - `POLL_INTERVAL` – Pollingintervall Print Middleware (ms)
 - `PRINTER_BW`, `PRINTER_COLOR` – Druckernamen
 - `NEXT_PUBLIC_INVOICE_*` – Rechnungs-/Absenderdaten im PDF
@@ -169,10 +159,10 @@ Wichtige Laufzeitlogik:
 npm run build
 ```
 
-2. SSO-Proxy starten (startet Next intern, falls `SSO_PROXY_SKIP_NEXT` nicht `1` ist):
+2. Next.js App starten:
 
 ```bash
-npm run start:sso
+npm run start
 ```
 
 3. Print Middleware separat starten:
@@ -186,14 +176,8 @@ npx tsx print-middleware/index.ts
 #### 8.1 Prozesse in PM2 anlegen
 
 ```bash
-pm2 start npm --name pool-sso -- run start:sso
+pm2 start npm --name pool-app -- run start
 pm2 start npx --name pool-print -- tsx print-middleware/index.ts
-```
-
-Wenn du `SSO_PROXY_SKIP_NEXT=1` nutzt, zusätzlich:
-
-```bash
-pm2 start npm --name pool-next -- run start
 ```
 
 #### 8.2 Prozessliste speichern
@@ -226,7 +210,7 @@ pm2 resurrect
 
 #### 9.2 Self-Service (`/public`)
 
-- User wird über SSO-Header aufgelöst (z. B. `x-remote-user`)
+- User gibt seine Benutzer-ID direkt ein
 - Falls kein Konto existiert: Konto kann angelegt werden
 - Kontostand + Transaktionen sichtbar
 - Löschantrag kann vom User selbst gestellt und innerhalb von 7 Tagen widerrufen werden
@@ -290,7 +274,6 @@ It combines:
 
 - End-user self-service (without supervisor login)
 - Supervisor dashboard for account and payment operations
-- Windows SSO proxy for user identity forwarding
 - Print middleware for automated spooler-based billing
 
 Main capabilities:
@@ -316,19 +299,14 @@ The runtime is intentionally split into separate components:
    - API key protection for `/api/print/*`
    - Optional LAN IP restriction (`LAN_ONLY`)
 
-3. **Windows SSO proxy (`server/windows-sso-proxy.ts`)**
-   - Performs SSPI auth (`node-expose-sspi`)
-   - Injects normalized user via `x-remote-user`
-   - Forwards requests to internal Next.js instance
-
-4. **Print middleware (`print-middleware/index.ts`)**
+3. **Print middleware (`print-middleware/index.ts`)**
    - Polls Windows spooler
    - Calls reserve/confirm/cancel API endpoints
    - Handles timeout/error refund behavior
 
 ### 3) Requirements
 
-- Windows host (for SSPI and print spooler controls)
+- Windows host (for print spooler controls)
 - Node.js 20+
 - npm
 - Access rights for target print queues
@@ -379,10 +357,6 @@ Common optional settings:
 
 - `NEXTAUTH_URL`
 - `LAN_ONLY`
-- `SSO_PROXY_PORT`
-- `NEXT_INTERNAL_PORT`
-- `NEXT_INTERNAL_HOST`
-- `SSO_PROXY_SKIP_NEXT`
 - `POLL_INTERVAL`
 - `PRINTER_BW`, `PRINTER_COLOR`
 - `NEXT_PUBLIC_INVOICE_*`
@@ -416,10 +390,10 @@ Runtime cleanup:
 npm run build
 ```
 
-2. Start SSO proxy:
+2. Start Next.js app:
 
 ```bash
-npm run start:sso
+npm run start
 ```
 
 3. Start print middleware:
@@ -433,14 +407,8 @@ npx tsx print-middleware/index.ts
 Create PM2 processes:
 
 ```bash
-pm2 start npm --name pool-sso -- run start:sso
+pm2 start npm --name pool-app -- run start
 pm2 start npx --name pool-print -- tsx print-middleware/index.ts
-```
-
-If `SSO_PROXY_SKIP_NEXT=1`, add:
-
-```bash
-pm2 start npm --name pool-next -- run start
 ```
 
 Persist process list:
@@ -468,7 +436,7 @@ Supervisor flow:
 
 Public flow:
 
-- User resolved from SSO header
+- User enters their user ID directly
 - Create account if missing
 - View balance and own transactions
 - Request deletion or restore within 7 days

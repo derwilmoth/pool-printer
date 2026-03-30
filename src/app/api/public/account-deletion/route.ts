@@ -1,25 +1,22 @@
 import { NextResponse } from "next/server";
 import getDb from "@/lib/db";
-import { resolveWindowsUser } from "@/lib/windows-user";
+import { normalizePublicUserId } from "@/lib/public-user";
 
 export async function POST(request: Request) {
   try {
-    const resolved = resolveWindowsUser(request.headers);
+    const body = await request.json().catch(() => ({}));
+    const userId = normalizePublicUserId(body?.userId);
+    const action = body?.action === "restore" ? "restore" : "request";
 
-    if (!resolved) {
+    if (!userId) {
       return NextResponse.json(
         {
-          resolved: false,
-          error: "Windows username could not be resolved",
-          hint: "Provide one of the expected user headers via SSO proxy/IIS (for example: x-remote-user).",
+          error: "userId is required",
+          hint: "Provide userId in JSON body, for example: { \"userId\": \"maxmustermann\", \"action\": \"request\" }",
         },
         { status: 400 },
       );
     }
-
-    const userId = resolved.userId;
-    const body = await request.json().catch(() => ({}));
-    const action = body?.action === "restore" ? "restore" : "request";
 
     const db = getDb();
 

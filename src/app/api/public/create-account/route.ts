@@ -1,23 +1,21 @@
 import { NextResponse } from "next/server";
 import getDb from "@/lib/db";
-import { resolveWindowsUser } from "@/lib/windows-user";
+import { normalizePublicUserId } from "@/lib/public-user";
 
 export async function POST(request: Request) {
   try {
-    const resolved = resolveWindowsUser(request.headers);
+    const body = await request.json().catch(() => ({}));
+    const userId = normalizePublicUserId(body?.userId);
 
-    if (!resolved) {
+    if (!userId) {
       return NextResponse.json(
         {
-          resolved: false,
-          error: "Windows username could not be resolved",
-          hint: "Provide one of the expected user headers via proxy/IIS, or access via localhost so server fallback can be used.",
+          error: "userId is required",
+          hint: "Provide userId in JSON body, for example: { \"userId\": \"maxmustermann\" }",
         },
         { status: 400 },
       );
     }
-
-    const userId = resolved.userId;
 
     const db = getDb();
 
@@ -43,7 +41,6 @@ export async function POST(request: Request) {
         return NextResponse.json({
           created: false,
           restored: true,
-          source: resolved.source,
           userId: existingUser.userId,
           balance: existingUser.balance,
           is_free_account: existingUser.is_free_account,
@@ -52,7 +49,6 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         created: false,
-        source: resolved.source,
         userId: existingUser.userId,
         balance: existingUser.balance,
         is_free_account: existingUser.is_free_account,
@@ -64,7 +60,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         created: true,
-        source: resolved.source,
         userId,
         balance: 0,
         is_free_account: 0,
