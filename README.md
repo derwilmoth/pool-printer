@@ -22,7 +22,7 @@ Kernfunktionen:
 - Benutzerverwaltung (anlegen, aufladen, belasten, kostenlos markieren)
 - Self-Service Seite `/public` für Endnutzer
 - Automatische Druckabbuchung (S/W und Farbe, mit Preisen aus Einstellungen)
-- Manueller Zahlungs-/Buchungsfluss (z. B. Bar/Karte)
+- Manueller Zahlungs-/Buchungsfluss
 - 7-Tage Löschantrag mit Wiederherstellung statt sofortiger Löschung
 - PDF-Belege/Rechnungen
 
@@ -131,7 +131,6 @@ Die Anwendung nutzt SQLite mit folgenden Tabellen:
 - `type` (`deposit` | `print_bw` | `print_color` | `manual`)
 - `description`
 - `status` (`pending` | `completed` | `failed` | `refunded`)
-- `paymentMethod`
 - `timestamp`
 
 4. `settings`
@@ -330,7 +329,7 @@ Main capabilities:
 - User management (create, deposit, charge, free account flag)
 - Public self-service page at `/public`
 - Automatic print charging (B/W + color pricing)
-- Manual transaction flow (cash/card/etc.)
+- Manual transaction flow
 - 7-day deletion request with restore window
 - PDF receipts/invoices
 
@@ -438,7 +437,6 @@ The app uses SQLite with the following tables:
 - `type` (`deposit` | `print_bw` | `print_color` | `manual`)
 - `description`
 - `status` (`pending` | `completed` | `failed` | `refunded`)
-- `paymentMethod`
 - `timestamp`
 
 4. `settings`

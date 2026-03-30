@@ -71,7 +71,6 @@ interface Transaction {
   type: string;
   status: string;
   timestamp: string;
-  paymentMethod?: string | null;
   description?: string | null;
 }
 

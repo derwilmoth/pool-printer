@@ -62,7 +62,6 @@ interface Transaction {
   pages: number;
   type: string;
   status: string;
-  paymentMethod?: string | null;
   description?: string | null;
   timestamp: string;
 }
@@ -76,7 +75,6 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   const [depositAmount, setDepositAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
   const [newUserId, setNewUserId] = useState("");
   const [newUserIsFree, setNewUserIsFree] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -162,7 +160,6 @@ export default function UsersPage() {
         body: JSON.stringify({
           userId: selectedUser.userId,
           amount: amountCents,
-          paymentMethod,
         }),
       });
       const data = await res.json();
@@ -629,26 +626,6 @@ export default function UsersPage() {
                     {/* Deposit */}
                     <div className="space-y-2">
                       <Label>{t("users.addDeposit")}</Label>
-                      <div className="flex gap-2 mb-2">
-                        <Button
-                          variant={
-                            paymentMethod === "cash" ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => setPaymentMethod("cash")}
-                        >
-                          {t("users.paymentCash")}
-                        </Button>
-                        <Button
-                          variant={
-                            paymentMethod === "card" ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => setPaymentMethod("card")}
-                        >
-                          {t("users.paymentCard")}
-                        </Button>
-                      </div>
                       <div className="flex gap-2">
                         <Input
                           type="number"

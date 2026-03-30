@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     // Get transactions
     const transactions = db
       .prepare(
-        `SELECT t.id, t.userId, t.amount, t.pages, t.type, t.status, t.paymentMethod, t.description, t.timestamp
+        `SELECT t.id, t.userId, t.amount, t.pages, t.type, t.status, t.description, t.timestamp
          FROM transactions t
          JOIN users u ON u.userId = t.userId
          ${whereClause}

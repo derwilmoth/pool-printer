@@ -8,7 +8,6 @@ interface InvoiceData {
   pages: number | null;
   type: string;
   status: string;
-  paymentMethod?: string | null;
   description?: string | null;
   timestamp: string;
 }
@@ -54,7 +53,6 @@ const labels: Record<
     email: string;
     descriptionLabel: string;
     descriptionDeposit: string;
-    descriptionDepositCard: string;
     descriptionPrintBw: string;
     descriptionPrintColor: string;
     descriptionManual: string;
@@ -92,8 +90,7 @@ const labels: Record<
     phone: "Tel.",
     email: "E-Mail",
     descriptionLabel: "Beschreibung",
-    descriptionDeposit: "Guthabenaufladung – Barzahlung",
-    descriptionDepositCard: "Guthabenaufladung – Kartenzahlung",
+    descriptionDeposit: "Guthabenaufladung",
     descriptionPrintBw: "Druckauftrag – Schwarz/Weiß",
     descriptionPrintColor: "Druckauftrag – Farbe",
     descriptionManual: "Manuelle Abbuchung",
@@ -130,8 +127,7 @@ const labels: Record<
     phone: "Phone",
     email: "Email",
     descriptionLabel: "Description",
-    descriptionDeposit: "Account top-up – Cash payment",
-    descriptionDepositCard: "Account top-up – Card payment",
+    descriptionDeposit: "Account top-up",
     descriptionPrintBw: "Print job – Black & White",
     descriptionPrintColor: "Print job – Color",
     descriptionManual: "Manual charge",
@@ -343,7 +339,7 @@ export async function generateInvoicePDF(
   let descriptionText: string;
   switch (tx.type) {
     case "deposit":
-      descriptionText = tx.paymentMethod === "card" ? l.descriptionDepositCard : l.descriptionDeposit;
+      descriptionText = l.descriptionDeposit;
       break;
     case "print_bw":
       descriptionText = l.descriptionPrintBw;

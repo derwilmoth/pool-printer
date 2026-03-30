@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     const transactions = db
       .prepare(
-        `SELECT id, userId, amount, pages, type, status, paymentMethod, description, timestamp
+        `SELECT id, userId, amount, pages, type, status, description, timestamp
          FROM transactions
          WHERE userId = ?
          ORDER BY timestamp DESC

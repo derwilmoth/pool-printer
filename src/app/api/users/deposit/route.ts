@@ -6,7 +6,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const userId = (body.userId as string)?.toLowerCase();
     const amount = body.amount;
-    const paymentMethod = body.paymentMethod;
 
     if (!userId || !amount || amount <= 0) {
       return NextResponse.json(
@@ -14,8 +13,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    const method = paymentMethod === "card" ? "card" : "cash";
 
     const db = getDb();
 
@@ -44,8 +41,8 @@ export async function POST(request: Request) {
     const depositTransaction = db.transaction(() => {
       db.prepare("UPDATE users SET balance = balance + ? WHERE userId = ?").run(amount, userId);
       db.prepare(
-        "INSERT INTO transactions (userId, amount, pages, type, status, paymentMethod) VALUES (?, ?, 0, 'deposit', 'completed', ?)"
-      ).run(userId, amount, method);
+        "INSERT INTO transactions (userId, amount, pages, type, status) VALUES (?, ?, 0, 'deposit', 'completed')"
+      ).run(userId, amount);
 
       const updated = db
         .prepare("SELECT balance FROM users WHERE userId = ?")

@@ -44,7 +44,6 @@ db.exec(`
     type TEXT NOT NULL CHECK(type IN ('deposit', 'print_bw', 'print_color', 'manual')),
     description TEXT DEFAULT NULL,
     status TEXT NOT NULL CHECK(status IN ('pending', 'completed', 'failed', 'refunded')),
-    paymentMethod TEXT DEFAULT NULL,
     timestamp DATETIME NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (userId) REFERENCES users(userId)
   );
