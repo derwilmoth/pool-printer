@@ -1,3 +1,5 @@
+import { verifyPublicLaunchToken } from "@/lib/public-launch";
+
 export function normalizePublicUserId(rawValue: unknown): string | null {
   if (typeof rawValue !== "string") return null;
 
@@ -22,14 +24,27 @@ export function resolvePublicUserIdFromRequest(request: Request): {
   rawValue: string | null;
 } {
   const url = new URL(request.url);
-  const queryCandidates = ["user", "userId", "username"] as const;
+  const rawToken = url.searchParams.get("launchToken");
+  if (!rawToken) {
+    return {
+      userId: null,
+      source: null,
+      rawValue: null,
+    };
+  }
 
-  for (const queryName of queryCandidates) {
-    const rawValue = url.searchParams.get(queryName);
-    const userId = normalizePublicUserId(rawValue);
-    if (userId) {
-      return { userId, source: queryName, rawValue };
-    }
+  const tokenResult = verifyPublicLaunchToken(rawToken);
+  if (!tokenResult.valid || !tokenResult.userId) {
+    return {
+      userId: null,
+      source: null,
+      rawValue: rawToken,
+    };
+  }
+
+  const userId = normalizePublicUserId(tokenResult.userId);
+  if (userId) {
+    return { userId, source: "launchToken", rawValue: rawToken };
   }
 
   return {

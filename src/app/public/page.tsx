@@ -48,7 +48,6 @@ import {
 import Image from "next/image";
 import { toast } from "sonner";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
-import { normalizePublicUserId } from "@/lib/public-user";
 
 interface PublicAccount {
   resolved: boolean;
@@ -84,7 +83,7 @@ interface Pagination {
 export default function PublicPage() {
   const { t, locale, setLocale, formatCurrency, formatDateTime } = useI18n();
   const { setTheme, theme } = useTheme();
-  const [publicUserId, setPublicUserId] = useState<string | null>(null);
+  const [launchToken, setLaunchToken] = useState<string | null>(null);
   const [userInitialized, setUserInitialized] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -103,13 +102,14 @@ export default function PublicPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setPublicUserId(normalizePublicUserId(params.get("user")));
+    const token = params.get("launchToken")?.trim() || null;
+    setLaunchToken(token);
     setUserInitialized(true);
   }, []);
 
   const buildPublicApiUrl = useCallback(
     (path: string, params?: Record<string, string>) => {
-      const query = new URLSearchParams({ user: publicUserId || "" });
+      const query = new URLSearchParams({ launchToken: launchToken || "" });
 
       if (params) {
         for (const [key, value] of Object.entries(params)) {
@@ -119,12 +119,12 @@ export default function PublicPage() {
 
       return `${path}?${query.toString()}`;
     },
-    [publicUserId],
+    [launchToken],
   );
 
   const fetchTransactions = useCallback(
     async (page = 1) => {
-      if (!publicUserId) {
+      if (!launchToken) {
         setTransactions([]);
         setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
         return;
@@ -147,13 +147,13 @@ export default function PublicPage() {
         data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 },
       );
     },
-    [buildPublicApiUrl, pagination.limit, publicUserId],
+    [buildPublicApiUrl, launchToken, pagination.limit],
   );
 
   const fetchAccount = useCallback(async () => {
     setLoading(true);
     try {
-      if (!publicUserId) {
+      if (!launchToken) {
         setAccount(null);
         setTransactions([]);
         setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -176,7 +176,7 @@ export default function PublicPage() {
     } finally {
       setLoading(false);
     }
-  }, [buildPublicApiUrl, fetchTransactions, publicUserId, t]);
+  }, [buildPublicApiUrl, fetchTransactions, launchToken, t]);
 
   useEffect(() => {
     if (!userInitialized) {
@@ -187,7 +187,7 @@ export default function PublicPage() {
   }, [fetchAccount, userInitialized]);
 
   const handleLoadAccount = async () => {
-    if (!publicUserId) {
+    if (!launchToken) {
       toast.error(t("public.userResolveFailedTitle"));
       return;
     }
@@ -196,7 +196,7 @@ export default function PublicPage() {
   };
 
   const handleCreateAccount = async () => {
-    if (!publicUserId) {
+    if (!launchToken) {
       toast.error(t("public.userResolveFailedTitle"));
       return;
     }
@@ -224,7 +224,7 @@ export default function PublicPage() {
   };
 
   const handleAccountDeletionAction = async (action: "request" | "restore") => {
-    if (!publicUserId) {
+    if (!launchToken) {
       toast.error(t("public.userResolveFailedTitle"));
       return;
     }

@@ -43,7 +43,8 @@ Das Projekt läuft als Split-Architektur:
 3. **PowerShell Launcher (`launch-pool-printer.ps1`)**
    - Liest den aktuellen Windows-Benutzernamen aus
    - Normalisiert immer auf lowercase
-   - Öffnet Browser mit `/public?user=<username>`
+   - Sendet Benutzername + Secret per POST an `/api/public/launch`
+   - Öffnet Browser mit `/public?launchToken=...`
 
 4. **Print Middleware (`print-middleware/index.ts`)**
    - Pollt den Windows Spooler
@@ -80,6 +81,7 @@ copy .env.example .env.local
 
 - `NEXTAUTH_SECRET`
 - `API_KEY`
+- `PUBLIC_LAUNCH_SECRET`
 
 4. Datenbank initialisieren:
 
@@ -98,6 +100,7 @@ Pflicht:
 
 - `NEXTAUTH_SECRET` - Secret für NextAuth/JWT
 - `API_KEY` - gemeinsamer Schlüssel zwischen App und Print Middleware
+- `PUBLIC_LAUNCH_SECRET` - Shared Secret für den Public-Launcher
 
 Häufig genutzte Optionen:
 
@@ -180,23 +183,26 @@ npx tsx print-middleware/index.ts
 Der Public-Flow arbeitet ohne IIS und ohne Header-Forwarding.
 Stattdessen startet man die Public-Seite über das Script `launch-pool-printer.ps1`.
 
+Wichtig: Trage denselben Secret-Wert in `.env.local` (`PUBLIC_LAUNCH_SECRET`) und im Skript (Parameter `-LaunchSecret`) ein.
+
 Standardstart:
 
 ```powershell
-.\launch-pool-printer.ps1
+.\launch-pool-printer.ps1 -LaunchSecret "DEIN_SECRET"
 ```
 
 Start gegen einen anderen Host:
 
 ```powershell
-.\launch-pool-printer.ps1 -BaseUrl "http://server-name:3000/public"
+.\launch-pool-printer.ps1 -BaseUrl "http://server-name:3000/public" -LaunchSecret "DEIN_SECRET"
 ```
 
 Das Script:
 
 - liest den aktuellen Windows-Benutzer
 - normalisiert den Namen auf lowercase
-- öffnet die URL mit `?user=<username>`
+- sendet Benutzername + Secret per POST an `/api/public/launch`
+- öffnet danach die URL mit `?launchToken=...`
 
 Wichtig:
 
@@ -278,7 +284,8 @@ Hinweise:
 
 #### 10.2 Self-Service (`/public`)
 
-- Public-Benutzer wird aus dem URL-Parameter `user` gelesen
+- Zugriff auf `/public` nur mit gültigem `launchToken`
+- Public-Benutzer wird serverseitig aus dem `launchToken` abgeleitet
 - Falls kein Konto existiert: Konto kann angelegt werden
 - Kontostand + Transaktionen sichtbar
 - Löschantrag kann vom User selbst gestellt und innerhalb von 7 Tagen widerrufen werden
@@ -312,6 +319,7 @@ Hinweise:
 
 Public:
 
+- `POST /api/public/launch`
 - `GET /api/public/me`
 - `POST /api/public/create-account`
 - `GET /api/public/transactions`
@@ -373,7 +381,8 @@ Main capabilities:
 3. **PowerShell launcher (`launch-pool-printer.ps1`)**
    - Reads current Windows username
    - Always normalizes to lowercase
-   - Opens browser with `/public?user=<username>`
+   - Sends username + secret via POST to `/api/public/launch`
+   - Opens browser with `/public?launchToken=...`
 
 4. **Print middleware (`print-middleware/index.ts`)**
    - Polls Windows spooler
@@ -400,6 +409,7 @@ Required `.env.local` keys:
 
 - `NEXTAUTH_SECRET`
 - `API_KEY`
+- `PUBLIC_LAUNCH_SECRET`
 
 ### 5) Run
 
@@ -455,21 +465,23 @@ schtasks /create /tn "Pool Printer Autostart" /sc onlogon /tr "cmd /c C:\pool-pr
 ### 6) Public launcher usage
 
 ```powershell
-.\launch-pool-printer.ps1
+.\launch-pool-printer.ps1 -LaunchSecret "YOUR_SECRET"
 ```
 
 Custom host:
 
 ```powershell
-.\launch-pool-printer.ps1 -BaseUrl "http://server-name:3000/public"
+.\launch-pool-printer.ps1 -BaseUrl "http://server-name:3000/public" -LaunchSecret "YOUR_SECRET"
 ```
 
+The launcher sends username + secret to `/api/public/launch` and opens `/public` only with a valid launch token.
 The username is forced to lowercase in both launcher and app normalization.
 
 ### 7) Main APIs
 
 Public:
 
+- `POST /api/public/launch`
 - `GET /api/public/me`
 - `POST /api/public/create-account`
 - `GET /api/public/transactions`

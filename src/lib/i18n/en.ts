@@ -129,7 +129,7 @@ const en: Record<TranslationKey, string> = {
   "public.transactionsTitle": "Transaction History",
   "public.transactionsDescription": "All past bookings with printable receipt.",
   "public.userResolveFailedTitle": "Windows user could not be detected",
-  "public.userResolveFailedDesc": "Start the page through the PowerShell launcher so the current Windows user is passed as ?user=...",
+  "public.userResolveFailedDesc": "Start the page through the PowerShell launcher. The launcher requests a launch token in the background and opens /public only with a valid token.",
   "public.userIdPlaceholder": "e.g. maxmustermann",
   "public.loadAccount": "Load account",
   "public.userIdRequired": "Please enter a user ID first",

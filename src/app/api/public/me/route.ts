@@ -13,7 +13,7 @@ export async function GET(request: Request) {
         resolved: false,
         exists: false,
         error: "userId is required",
-        hint: "Start the app via the PowerShell launcher so the current Windows username is appended as ?user=...",
+        hint: "Start the app via the PowerShell launcher. It requests a launch token in the background and opens /public with launchToken.",
       });
     }
 

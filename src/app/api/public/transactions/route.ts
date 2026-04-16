@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         resolved: false,
         error: "Public user is missing",
-        hint: "Start the app via the PowerShell launcher so the current Windows username is appended as ?user=...",
+        hint: "Start the app via the PowerShell launcher. It requests a launch token in the background and opens /public with launchToken.",
         transactions: [],
         pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
       });

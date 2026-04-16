@@ -49,10 +49,25 @@ function getClientIp(request: NextRequest): string {
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+  const hasLaunchToken = !!searchParams.get("launchToken");
 
   // Public self-service page and APIs (no supervisor login)
-  if (pathname === "/public" || pathname.startsWith("/api/public")) {
+  if (pathname === "/public") {
+    if (!hasLaunchToken) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
+  if (pathname === "/api/public/launch") {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/api/public")) {
+    if (!hasLaunchToken) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     return NextResponse.next();
   }
 
@@ -85,7 +100,7 @@ export async function proxy(request: NextRequest) {
     if (token) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-    return NextResponse.redirect(new URL("/public", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Allow login page
