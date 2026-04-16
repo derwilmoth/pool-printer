@@ -60,7 +60,7 @@ Das Projekt läuft als Split-Architektur:
 
 Optional/Produktion:
 
-- PM2 für Prozessverwaltung
+- Windows Task Scheduler für Autostart
 
 ### 4) Initiales Setup
 
@@ -203,31 +203,67 @@ Wichtig:
 - Der Benutzername wird im Frontend und Backend zusätzlich normalisiert.
 - Groß-/Kleinschreibung ist damit immer konsistent lowercase.
 
-### 9) PM2 Autostart
+### 9) Windows Autostart mit BAT
 
-#### 9.1 Prozesse in PM2 anlegen
+#### 9.1 BAT-Dateien anlegen
 
-```bash
-pm2 start npm --name pool-app -- run start
-pm2 start npx --name pool-print -- tsx print-middleware/index.ts
+Lege im Projektordner diese 3 Dateien an.
+
+`start-pool-app.bat`
+
+```bat
+@echo off
+cd /d C:\pool-printer
+npm run start
 ```
 
-#### 9.2 Prozessliste speichern
+`start-pool-print.bat`
 
-```bash
-pm2 save
+```bat
+@echo off
+cd /d C:\pool-printer
+npx tsx print-middleware/index.ts
 ```
 
-#### 9.3 Autostart aktivieren (Windows)
+`start-pool-background.bat`
 
-- PM2 selbst verwaltet Prozesse, aber Boot-Autostart wird unter Windows typischerweise per Task Scheduler/Service ergänzt.
-- Praxis: PM2 beim Systemstart ausführen und danach `pm2 resurrect` aufrufen.
-
-Beispiel:
-
-```bash
-pm2 resurrect
+```bat
+@echo off
+cd /d C:\pool-printer
+start "pool-app" /min cmd /c "C:\pool-printer\start-pool-app.bat"
+start "pool-print" /min cmd /c "C:\pool-printer\start-pool-print.bat"
 ```
+
+#### 9.2 Autostart im Hintergrund einrichten (Task Scheduler)
+
+Variante GUI:
+
+1. Task Scheduler öffnen
+2. `Create Task...`
+3. Name: `Pool Printer Autostart`
+4. Trigger: `At log on`
+5. Action: `Start a program`
+6. Program/script: `cmd.exe`
+7. Arguments: `/c C:\pool-printer\start-pool-background.bat`
+8. Optional: `Run with highest privileges`
+
+Variante PowerShell:
+
+```powershell
+schtasks /create /tn "Pool Printer Autostart" /sc onlogon /tr "cmd /c C:\pool-printer\start-pool-background.bat" /f
+```
+
+Test:
+
+```powershell
+schtasks /run /tn "Pool Printer Autostart"
+```
+
+Hinweise:
+
+- Vorher einmal `npm run build` ausführen, damit `npm run start` lauffähig ist.
+- Die Prozesse laufen in minimierten Fenstern im Hintergrund.
+- Falls dein Projektpfad anders ist, die Pfade in allen BAT-Dateien anpassen.
 
 ### 10) Betriebslogik (End-to-End)
 
@@ -379,6 +415,41 @@ Production:
 npm run build
 npm run start
 npx tsx print-middleware/index.ts
+```
+
+### 5.1) Windows autostart (BAT + Task Scheduler)
+
+Create these BAT files in the project folder:
+
+`start-pool-app.bat`
+
+```bat
+@echo off
+cd /d C:\pool-printer
+npm run start
+```
+
+`start-pool-print.bat`
+
+```bat
+@echo off
+cd /d C:\pool-printer
+npx tsx print-middleware/index.ts
+```
+
+`start-pool-background.bat`
+
+```bat
+@echo off
+cd /d C:\pool-printer
+start "pool-app" /min cmd /c "C:\pool-printer\start-pool-app.bat"
+start "pool-print" /min cmd /c "C:\pool-printer\start-pool-print.bat"
+```
+
+Create the startup task:
+
+```powershell
+schtasks /create /tn "Pool Printer Autostart" /sc onlogon /tr "cmd /c C:\pool-printer\start-pool-background.bat" /f
 ```
 
 ### 6) Public launcher usage
