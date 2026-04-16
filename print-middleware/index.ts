@@ -80,6 +80,10 @@ async function apiRequest(path: string, body: Record<string, unknown>): Promise<
   return (await res.json()) as Record<string, unknown>;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+}
+
 function getPrinterType(printerName: string): "bw" | "color" {
   // If a color printer is configured and this job is on it, it's color
   if (PRINTER_COLOR && printerName === PRINTER_COLOR && PRINTER_COLOR !== PRINTER_BW) {
@@ -214,6 +218,7 @@ async function handlePausedJobs(): Promise<void> {
         userId,
         pages,
         printerType,
+        jobKey: key,
       });
 
       if (result.allowed) {
@@ -233,7 +238,7 @@ async function handlePausedJobs(): Promise<void> {
 
         trackedJobs.set(key, tracked);
         console.log(
-          `[RESUMED] Job #${id} - ${result.isFree ? "FREE" : `Transaction #${result.transactionId}`}`
+          `[RESUMED] Job #${id} - ${result.isFree ? "FREE" : `Transaction #${result.transactionId}${result.deduplicated ? " (deduplicated)" : ""}`}`
         );
       } else {
         // Not allowed - reject and remove the job immediately from the queue
@@ -334,6 +339,13 @@ async function poll(): Promise<void> {
   }
 }
 
+async function startPolling(): Promise<void> {
+  while (true) {
+    await poll();
+    await sleep(POLL_INTERVAL);
+  }
+}
+
 // Main entry point
 console.log("=== Print Middleware Starting ===");
 console.log(`API URL: ${API_URL}`);
@@ -346,11 +358,11 @@ if (!PRINTER_COLOR || PRINTER_BW === PRINTER_COLOR) {
 console.log(`Poll interval: ${POLL_INTERVAL}ms`);
 console.log("================================\n");
 
-// Initial poll
-poll();
-
-// Set up interval
-setInterval(poll, POLL_INTERVAL);
+// Start sequential polling loop (no overlapping runs)
+startPolling().catch((error) => {
+  console.error("[FATAL] Polling loop crashed:", error);
+  process.exit(1);
+});
 
 // Graceful shutdown
 process.on("SIGINT", () => {

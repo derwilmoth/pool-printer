@@ -7,10 +7,11 @@ export async function POST(request: Request) {
     const userId = (body.userId as string)?.toLowerCase();
     const pages = body.pages;
     const printerType = body.printerType;
+    const jobKey = typeof body.jobKey === "string" ? body.jobKey.trim() : "";
 
-    if (!userId || !pages || !printerType) {
+    if (!userId || !pages || !printerType || !jobKey) {
       return NextResponse.json(
-        { error: "userId, pages, and printerType are required" },
+        { error: "userId, pages, printerType, and jobKey are required" },
         { status: 400 }
       );
     }
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
 
     const pricePerPage = priceSetting ? parseInt(priceSetting.value, 10) : (printerType === "bw" ? 5 : 20);
     const totalCost = pricePerPage * pages;
+    const type = printerType === "bw" ? "print_bw" : "print_color";
+    const reservationMarker = `print_job:${jobKey}`;
 
     // Check balance
     if (user.balance < totalCost) {
@@ -64,26 +67,36 @@ export async function POST(request: Request) {
       });
     }
 
-    // Deduct balance and create pending transaction in a SQL Transaction
+    // Deduct/create atomically and deduplicate by unique spooler job key marker
     const reserveTransaction = db.transaction(() => {
+      const existing = db
+        .prepare(
+          "SELECT id FROM transactions WHERE description = ? AND status = 'pending' LIMIT 1",
+        )
+        .get(reservationMarker) as { id: number } | undefined;
+
+      if (existing) {
+        return { transactionId: existing.id, deduplicated: true };
+      }
+
       db.prepare("UPDATE users SET balance = balance - ? WHERE userId = ?").run(totalCost, userId);
 
-      const type = printerType === "bw" ? "print_bw" : "print_color";
       const result = db
         .prepare(
-          "INSERT INTO transactions (userId, amount, pages, type, status) VALUES (?, ?, ?, ?, 'pending')"
+          "INSERT INTO transactions (userId, amount, pages, type, description, status) VALUES (?, ?, ?, ?, ?, 'pending')",
         )
-        .run(userId, totalCost, pages, type);
+        .run(userId, totalCost, pages, type, reservationMarker);
 
-      return result.lastInsertRowid;
+      return { transactionId: Number(result.lastInsertRowid), deduplicated: false };
     });
 
-    const transactionId = reserveTransaction();
+    const reservation = reserveTransaction();
 
     return NextResponse.json({
       allowed: true,
       isFree: false,
-      transactionId: Number(transactionId),
+      transactionId: reservation.transactionId,
+      deduplicated: reservation.deduplicated,
     });
   } catch (error) {
     console.error("Failed to reserve print:", error);
