@@ -13,7 +13,7 @@ function Start-PoolProcess {
 
   $powerShellExe = (Get-Command powershell.exe).Source
 
-  Start-Process -FilePath $powerShellExe -WindowStyle Hidden -ArgumentList @(
+  Start-Process -FilePath $powerShellExe -WindowStyle Minimized -ArgumentList @(
     "-NoProfile",
     "-ExecutionPolicy",
     "Bypass",

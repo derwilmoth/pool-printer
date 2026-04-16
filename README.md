@@ -115,7 +115,7 @@ Hinweise:
 
 - Das Skript verwendet standardmäßig den Ordner, in dem es liegt.
 - Vorher einmal `npm run build` ausführen, damit `npm run start` lauffähig ist.
-- Die Prozesse laufen im Hintergrund als eigene PowerShell-Prozesse.
+- Die Prozesse starten minimiert und können von der Taskleiste aus geöffnet werden.
 
 ### 7) Public Launcher (PowerShell)
 
@@ -342,7 +342,7 @@ Notes:
 
 - The script uses the folder it lives in by default.
 - Run `npm run build` once before using `npm run start`.
-- The processes run as separate hidden PowerShell processes.
+- The processes start minimized and can be opened from the taskbar.
 
 ### 6) Public launcher usage
 
