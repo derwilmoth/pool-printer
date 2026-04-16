@@ -25,6 +25,8 @@ import {
 import { Printer, Sun, Moon, Monitor, Globe } from "lucide-react";
 import Image from "next/image";
 
+const SUPERVISOR_TAB_SESSION_KEY = "pool_printer_supervisor_tab_active";
+
 export default function LoginPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
@@ -51,6 +53,11 @@ export default function LoginPage() {
     if (result?.error) {
       setError(t("login.invalidCredentials"));
     } else {
+      try {
+        sessionStorage.setItem(SUPERVISOR_TAB_SESSION_KEY, "1");
+      } catch {
+        // ignore
+      }
       router.push("/dashboard");
       router.refresh();
     }

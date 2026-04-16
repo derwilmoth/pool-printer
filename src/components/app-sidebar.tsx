@@ -41,6 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const SUPERVISOR_TAB_SESSION_KEY = "pool_printer_supervisor_tab_active";
+
 const navItems: {
   titleKey: TranslationKey;
   href: string;
@@ -133,6 +135,11 @@ function useSessionTimer() {
       );
       setSecondsLeft(remaining);
       if (remaining <= 0) {
+        try {
+          sessionStorage.removeItem(SUPERVISOR_TAB_SESSION_KEY);
+        } catch {
+          // ignore
+        }
         signOut({ callbackUrl: `${window.location.origin}/login` });
       }
     }, 1000);
@@ -168,6 +175,28 @@ export function AppSidebar() {
   const { t, locale, setLocale } = useI18n();
   const { setTheme, theme } = useTheme();
   const { secondsLeft, isDisabled } = useSessionTimer();
+
+  useEffect(() => {
+    try {
+      const hasTabSession =
+        sessionStorage.getItem(SUPERVISOR_TAB_SESSION_KEY) === "1";
+      if (!hasTabSession) {
+        signOut({ callbackUrl: `${window.location.origin}/login` });
+        return;
+      }
+    } catch {
+      signOut({ callbackUrl: `${window.location.origin}/login` });
+    }
+  }, []);
+
+  const handleSupervisorSignOut = useCallback(() => {
+    try {
+      sessionStorage.removeItem(SUPERVISOR_TAB_SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    signOut({ callbackUrl: `${window.location.origin}/login` });
+  }, []);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60);
@@ -277,9 +306,7 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             className="flex-1 justify-start gap-2"
-            onClick={() =>
-              signOut({ callbackUrl: `${window.location.origin}/login` })
-            }
+            onClick={handleSupervisorSignOut}
           >
             <LogOut className="h-4 w-4" />
             {t("nav.logout")}
