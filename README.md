@@ -58,14 +58,17 @@ Das Projekt läuft bewusst als **Split-Architektur**:
 - Windows (für Print-Spooler-Steuerung)
 - Node.js 20+
 - npm
-- IIS mit URL Rewrite + ARR (Application Request Routing)
-- IIS Windows Authentication Feature
+- IIS mit URL Rewrite + ARR (Application Request Routing), manuell installiert
+- IIS Windows Authentication Feature, manuell installiert
 - Zugriff auf Ziel-Druckerwarteschlangen
 - Rechte, um PrintJobs zu lesen/fortzusetzen/zu pausieren
 
 Optional/Produktion:
 
 - PM2 für Prozessverwaltung
+
+Fehlt in IIS unter Authentication der Eintrag "Windows Authentication", ist das Feature nicht installiert.
+Die Installation erfolgt manuell über Windows-Features oder per PowerShell (siehe Abschnitt 8.0).
 
 ### 4) Initiales Setup
 
@@ -182,6 +185,34 @@ npx tsx print-middleware/index.ts
 
 ### 8) IIS Reverse Proxy + Windows Authentication Setup
 
+#### 8.0 Wenn "Windows Authentication" in IIS fehlt
+
+Windows 10/11 (Client):
+
+```powershell
+dism /online /enable-feature /featurename:IIS-WindowsAuthentication /all
+```
+
+Optional (falls IIS noch nicht vollständig vorhanden ist):
+
+```powershell
+dism /online /enable-feature /featurename:IIS-WebServerRole /all
+dism /online /enable-feature /featurename:IIS-WebServer /all
+dism /online /enable-feature /featurename:IIS-ManagementConsole /all
+```
+
+Windows Server:
+
+```powershell
+Install-WindowsFeature Web-Server, Web-Windows-Auth -IncludeManagementTools
+```
+
+Danach:
+
+1. IIS neu starten (`iisreset`)
+2. IIS Manager schließen/neu öffnen
+3. Site -> Authentication prüfen, ob "Windows Authentication" sichtbar ist
+
 Ziel:
 
 - IIS ist der öffentliche Einstiegspunkt (Port `80`/`443`)
@@ -218,16 +249,21 @@ npm run start
 
 #### 8.4 Benutzerheader an Next.js übergeben
 
-Entweder per Rewrite-Rule Server Variables oder über `web.config`:
+Wichtig: Die Freigabe der Server-Variablen erfolgt auf Server-Ebene in IIS (nicht in der Site-web.config), sonst entsteht Fehler 500.52.
+
+1. IIS Manager auf Server-Ebene öffnen
+2. URL Rewrite -> View Server Variables
+3. Folgende Variablen hinzufügen:
+
+- `HTTP_X_USER`
+- `HTTP_REMOTE_USER`
+
+Danach in der Site-Rule die Variablen setzen (z. B. in `web.config`):
 
 ```xml
 <configuration>
   <system.webServer>
     <rewrite>
-      <allowedServerVariables>
-        <add name="HTTP_X_USER" />
-        <add name="HTTP_REMOTE_USER" />
-      </allowedServerVariables>
       <rules>
         <rule name="ReverseProxyInbound" stopProcessing="true">
           <match url="(.*)" />
@@ -450,14 +486,17 @@ The runtime is intentionally split into separate components:
 - Windows (for print spooler control)
 - Node.js 20+
 - npm
-- IIS with URL Rewrite + ARR (Application Request Routing)
-- IIS Windows Authentication feature
+- IIS with URL Rewrite + ARR (Application Request Routing), manually installed
+- IIS Windows Authentication feature, manually installed
 - Access to target print queues
 - Rights to read/resume/pause PrintJobs
 
 Optional/Production:
 
 - PM2 for process management
+
+If "Windows Authentication" is missing in IIS Authentication view, the feature is not installed.
+Install it manually via Windows Features or PowerShell (see section 8.0).
 
 ### 4) Initial Setup
 
@@ -574,6 +613,34 @@ npx tsx print-middleware/index.ts
 
 ### 8) IIS Reverse Proxy + Windows Authentication Setup
 
+#### 8.0 If "Windows Authentication" is missing in IIS
+
+Windows 10/11 (Client):
+
+```powershell
+dism /online /enable-feature /featurename:IIS-WindowsAuthentication /all
+```
+
+Optional (if IIS base features are missing):
+
+```powershell
+dism /online /enable-feature /featurename:IIS-WebServerRole /all
+dism /online /enable-feature /featurename:IIS-WebServer /all
+dism /online /enable-feature /featurename:IIS-ManagementConsole /all
+```
+
+Windows Server:
+
+```powershell
+Install-WindowsFeature Web-Server, Web-Windows-Auth -IncludeManagementTools
+```
+
+After installation:
+
+1. Restart IIS (`iisreset`)
+2. Close/reopen IIS Manager
+3. Check Site -> Authentication for "Windows Authentication"
+
 Goal:
 
 - IIS is the public entrypoint (port `80`/`443`)
@@ -610,16 +677,21 @@ npm run start
 
 #### 8.4 Forward user headers to Next.js
 
-Either set server variables in Rewrite UI or use `web.config`:
+Important: Allowing server variables must be done at IIS server level (not in site web.config), otherwise you get error 500.52.
+
+1. Open IIS Manager at server level
+2. URL Rewrite -> View Server Variables
+3. Add:
+
+- `HTTP_X_USER`
+- `HTTP_REMOTE_USER`
+
+Then set those variables inside the site rule (for example in `web.config`):
 
 ```xml
 <configuration>
   <system.webServer>
     <rewrite>
-      <allowedServerVariables>
-        <add name="HTTP_X_USER" />
-        <add name="HTTP_REMOTE_USER" />
-      </allowedServerVariables>
       <rules>
         <rule name="ReverseProxyInbound" stopProcessing="true">
           <match url="(.*)" />
