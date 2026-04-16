@@ -1,11 +1,11 @@
 # Pool Printer
 
-Pool Printer ist eine lokale Druckkonto- und Abrechnungsplattform für Hochschul-/Labornetze.
-Sie kombiniert:
+Pool Printer is a local print-account and billing platform for campus or lab networks.
+It combines:
 
-- Self-Service für normale Nutzer über `/public`
-- Supervisor-Dashboard für Verwaltung und Kasse
-- Print Middleware für automatisierte Spooler-Abrechnung
+- end-user self-service at `/public`
+- a supervisor dashboard for account and payment operations
+- print middleware for automated spooler-based billing
 
 ---
 
@@ -18,172 +18,108 @@ Druckaufträge werden nicht direkt im Browser ausgelöst, sondern über Windows-
 
 Kernfunktionen:
 
-- Supervisor-Login (Credentials via NextAuth)
-- Benutzerverwaltung (anlegen, aufladen, belasten, kostenlos markieren)
-- Self-Service Seite `/public` für Endnutzer
-- Automatische Druckabbuchung (S/W und Farbe, mit Preisen aus Einstellungen)
-- Manueller Zahlungs-/Buchungsfluss
-- 7-Tage Löschantrag mit Wiederherstellung statt sofortiger Löschung
-- PDF-Belege/Rechnungen
+- Supervisor-Login über NextAuth Credentials
+- Benutzerverwaltung: anlegen, aufladen, belasten, kostenlos markieren
+- Self-Service für normale Nutzer über `/public`
+- Automatische Druckabrechnung für Schwarz/Weiß und Farbe
+- Manuelle Transaktionen
+- 7-Tage-Löschantrag mit Restore-Fenster
+- PDF-Quittungen und Rechnungen
 
-### 2) Architektur (wichtig)
+### 2) Architektur
 
-Das Projekt läuft als Split-Architektur:
+1. **Next.js app**
+   - UI, API und SQLite access
+   - Local default port: `3000`
 
-1. **Next.js App**
-   - UI + API + SQLite Zugriff
-   - Standard-Port lokal: `3000`
+2. **Next.js proxy (`src/proxy.ts`)**
+   - Session protection for dashboard and internal APIs
+   - Public passthrough for `/public` and `/api/public/*`
+   - API key protection for `/api/print/*`
+   - Optional LAN IP restriction via `LAN_ONLY`
 
-2. **Next.js Proxy (`src/proxy.ts`)**
-   - Schützt Dashboard/API per Session
-   - Erlaubt `/public` und `/api/public/*` ohne Supervisor-Login
-   - Schützt `/api/print/*` zusätzlich mit `Authorization: Bearer API_KEY`
-   - Optional LAN-Einschränkung (`LAN_ONLY`)
-
-3. **PowerShell Launcher (`launch-pool-printer.ps1`)**
-   - Liest den aktuellen Windows-Benutzernamen aus
-   - Normalisiert immer auf lowercase
+3. **PowerShell launcher (`launch-pool-printer.ps1`)**
+   - Liest den aktuellen Windows-Benutzernamen
+   - Normalisiert ihn zu lowercase
    - Sendet Benutzername + Secret per POST an `/api/public/launch`
-   - Öffnet Browser mit `/public?launchToken=...`
+   - Öffnet danach die URL mit `?launchToken=...`
 
-4. **Print Middleware (`print-middleware/index.ts`)**
-   - Pollt den Windows Spooler
-   - Reserviert Druckkosten vor dem Druck (`/api/print/reserve`)
-   - Bestätigt nach Erfolg (`/api/print/confirm`) oder storniert/refundet (`/api/print/cancel`)
+4. **Print middleware (`print-middleware/index.ts`)**
+   - Polls the Windows spooler
+   - Reserves before print via `/api/print/reserve`
+   - Confirms or cancels via `/api/print/confirm` and `/api/print/cancel`
 
-### 3) Voraussetzungen
+### 3) Anforderungen
 
-- Windows (für Print-Spooler-Steuerung)
+- Windows
 - Node.js 20+
 - npm
-- Zugriff auf Ziel-Druckerwarteschlangen
-- Rechte, um PrintJobs zu lesen/fortzusetzen/zu pausieren
+- Access to target print queues
+- Permission to read, resume, and pause print jobs
 
-Optional/Produktion:
-
-- Windows Task Scheduler für Autostart
-
-### 4) Initiales Setup
-
-1. Abhängigkeiten installieren:
+### 4) Setup
 
 ```bash
 npm install
-```
-
-2. Umgebungsdatei anlegen:
-
-```bash
 copy .env.example .env.local
+npm run db:init
 ```
 
-3. Pflichtwerte in `.env.local` setzen:
+Erforderliche `.env.local` Werte:
 
 - `NEXTAUTH_SECRET`
 - `API_KEY`
 - `PUBLIC_LAUNCH_SECRET`
 
-4. Datenbank initialisieren:
+### 5) Betrieb
+
+Development:
 
 ```bash
-npm run db:init
+npm run dev
 ```
 
-Hinweis:
-
-- `db:init` erstellt die SQLite-Datei unter `data/pool-printer.db`.
-- Standard-Supervisor wird angelegt: `root / root`.
-
-### 5) Konfiguration (`.env.local`)
-
-Pflicht:
-
-- `NEXTAUTH_SECRET` - Secret für NextAuth/JWT
-- `API_KEY` - gemeinsamer Schlüssel zwischen App und Print Middleware
-- `PUBLIC_LAUNCH_SECRET` - Shared Secret für den Public-Launcher
-
-Häufig genutzte Optionen:
-
-- `NEXTAUTH_URL` - Basis-URL der App (Default: `http://localhost:3000`)
-- `LAN_ONLY` - `1` = nur Loopback + private Netze, `0` = offen
-- `POLL_INTERVAL` - Pollingintervall Print Middleware (ms)
-- `PRINTER_BW`, `PRINTER_COLOR` - Druckernamen
-- `NEXT_PUBLIC_INVOICE_*` - Rechnungs-/Absenderdaten im PDF
-
-### 6) Datenbankstruktur
-
-Die Anwendung nutzt SQLite mit folgenden Tabellen:
-
-1. `supervisors`
-
-- `id` (PK)
-- `username` (unique)
-- `password_hash`
-
-2. `users`
-
-- `userId` (PK)
-- `balance` (Integer, Cent)
-- `is_free_account` (`0/1`)
-- `account_state` (`active` | `deletion_requested`)
-- `deletion_requested_at`
-- `deletion_expires_at`
-- `deletion_requested_by`
-
-3. `transactions`
-
-- `id` (PK)
-- `userId` (FK -> `users.userId`)
-- `amount` (Integer, Cent)
-- `pages`
-- `type` (`deposit` | `print_bw` | `print_color` | `manual`)
-- `description`
-- `status` (`pending` | `completed` | `failed` | `refunded`)
-- `timestamp`
-
-4. `settings`
-
-- `key` (PK)
-- `value`
-
-Standardwerte in `settings`:
-
-- `price_bw = 5`
-- `price_color = 20`
-- `session_timeout = 60`
-
-Wichtige Laufzeitlogik:
-
-- Beim DB-Zugriff werden abgelaufene Löschanträge automatisch bereinigt:
-  - betroffene `transactions` gelöscht
-  - betroffene `users` gelöscht
-
-### 7) Starten in Produktion
-
-1. Build erstellen:
+Production:
 
 ```bash
 npm run build
-```
-
-2. Next.js App starten:
-
-```bash
 npm run start
-```
-
-3. Print Middleware separat starten:
-
-```bash
 npx tsx print-middleware/index.ts
 ```
 
-### 8) Public Launcher (PowerShell)
+### 6) Windows Autostart mit PowerShell
+
+Lege im Projektordner diese Datei an:
+
+- `start-pool-printer.ps1`
+
+Das Skript:
+
+- startet die Next.js App im Hintergrund
+- startet die Print Middleware im Hintergrund
+- kann optional den Autostart als Task anlegen
+
+Normales Starten:
+
+```powershell
+.\start-pool-printer.ps1
+```
+
+Autostart als Task anlegen:
+
+```powershell
+.\start-pool-printer.ps1 -InstallAutostart
+```
+
+Hinweise:
+
+- Das Skript verwendet standardmäßig den Ordner, in dem es liegt.
+- Vorher einmal `npm run build` ausführen, damit `npm run start` lauffähig ist.
+- Die Prozesse laufen im Hintergrund als eigene PowerShell-Prozesse.
+
+### 7) Public Launcher (PowerShell)
 
 Der Public-Flow arbeitet ohne IIS und ohne Header-Forwarding.
-Stattdessen startet man die Public-Seite über das Script `launch-pool-printer.ps1`.
-
-Wichtig: Trage denselben Secret-Wert in `.env.local` (`PUBLIC_LAUNCH_SECRET`) und im Skript (Parameter `-LaunchSecret`) ein.
 
 Standardstart:
 
@@ -209,71 +145,22 @@ Wichtig:
 - Der Benutzername wird im Frontend und Backend zusätzlich normalisiert.
 - Groß-/Kleinschreibung ist damit immer konsistent lowercase.
 
-### 9) Windows Autostart mit BAT
+### 8) Umgebungsvariablen
 
-#### 9.1 BAT-Dateien anlegen
-
-Lege im Projektordner diese 3 Dateien an.
-
-`start-pool-app.bat`
-
-```bat
-@echo off
-cd /d C:\pool-printer
-npm run start
+```env
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=change-me
+API_KEY=change-me
+PUBLIC_LAUNCH_SECRET=change-me
+PUBLIC_LAUNCH_TTL_SECONDS=120
+LAN_ONLY=false
 ```
 
-`start-pool-print.bat`
+`PUBLIC_LAUNCH_SECRET` muss mit dem Secret übereinstimmen, das von `launch-pool-printer.ps1` verwendet wird.
 
-```bat
-@echo off
-cd /d C:\pool-printer
-npx tsx print-middleware/index.ts
-```
+### 9) Betriebslogik (End-to-End)
 
-`start-pool-background.bat`
-
-```bat
-@echo off
-cd /d C:\pool-printer
-start "pool-app" /min cmd /c "C:\pool-printer\start-pool-app.bat"
-start "pool-print" /min cmd /c "C:\pool-printer\start-pool-print.bat"
-```
-
-#### 9.2 Autostart im Hintergrund einrichten (Task Scheduler)
-
-Variante GUI:
-
-1. Task Scheduler öffnen
-2. `Create Task...`
-3. Name: `Pool Printer Autostart`
-4. Trigger: `At log on`
-5. Action: `Start a program`
-6. Program/script: `cmd.exe`
-7. Arguments: `/c C:\pool-printer\start-pool-background.bat`
-8. Optional: `Run with highest privileges`
-
-Variante PowerShell:
-
-```powershell
-schtasks /create /tn "Pool Printer Autostart" /sc onlogon /tr "cmd /c C:\pool-printer\start-pool-background.bat" /f
-```
-
-Test:
-
-```powershell
-schtasks /run /tn "Pool Printer Autostart"
-```
-
-Hinweise:
-
-- Vorher einmal `npm run build` ausführen, damit `npm run start` lauffähig ist.
-- Die Prozesse laufen in minimierten Fenstern im Hintergrund.
-- Falls dein Projektpfad anders ist, die Pfade in allen BAT-Dateien anpassen.
-
-### 10) Betriebslogik (End-to-End)
-
-#### 10.1 Supervisor-Bereich
+#### 9.1 Supervisor-Bereich
 
 - Login über `/login`
 - Dashboard zeigt Kennzahlen inkl. manueller Aufträge/Umsatz
@@ -282,7 +169,7 @@ Hinweise:
   - `Löschanträge`
 - Nutzer mit `deletion_requested` sind aus normalen Abläufen ausgeklinkt
 
-#### 10.2 Self-Service (`/public`)
+#### 9.2 Self-Service (`/public`)
 
 - Zugriff auf `/public` nur mit gültigem `launchToken`
 - Public-Benutzer wird serverseitig aus dem `launchToken` abgeleitet
@@ -290,7 +177,7 @@ Hinweise:
 - Kontostand + Transaktionen sichtbar
 - Löschantrag kann vom User selbst gestellt und innerhalb von 7 Tagen widerrufen werden
 
-#### 10.3 Druckfluss
+#### 9.3 Druckfluss
 
 **Normal (erfolgreich):**
 
@@ -315,7 +202,7 @@ Hinweise:
 - Transaktion wird `refunded`
 - Guthaben wird rückgängig gemacht
 
-### 11) API-Übersicht
+### 10) API-Übersicht
 
 Public:
 
@@ -349,7 +236,7 @@ Print Middleware (API Key geschützt):
 
 ### 1) What this system does
 
-Pool Printer is a local print-account and billing platform for campus/lab networks.
+Pool Printer is a local print-account and billing platform for campus or lab networks.
 It combines:
 
 - End-user self-service at `/public`
@@ -427,40 +314,35 @@ npm run start
 npx tsx print-middleware/index.ts
 ```
 
-### 5.1) Windows autostart (BAT + Task Scheduler)
+### 5.1) Windows autostart (PowerShell)
 
-Create these BAT files in the project folder:
+Create only this one PowerShell script in the project folder:
 
-`start-pool-app.bat`
+- `start-pool-printer.ps1`
 
-```bat
-@echo off
-cd /d C:\pool-printer
-npm run start
-```
+The script:
 
-`start-pool-print.bat`
+- starts the Next.js app in the background
+- starts the print middleware in the background
+- can optionally install autostart as a scheduled task
 
-```bat
-@echo off
-cd /d C:\pool-printer
-npx tsx print-middleware/index.ts
-```
-
-`start-pool-background.bat`
-
-```bat
-@echo off
-cd /d C:\pool-printer
-start "pool-app" /min cmd /c "C:\pool-printer\start-pool-app.bat"
-start "pool-print" /min cmd /c "C:\pool-printer\start-pool-print.bat"
-```
-
-Create the startup task:
+Run it normally:
 
 ```powershell
-schtasks /create /tn "Pool Printer Autostart" /sc onlogon /tr "cmd /c C:\pool-printer\start-pool-background.bat" /f
+.\start-pool-printer.ps1
 ```
+
+Create the scheduled task:
+
+```powershell
+.\start-pool-printer.ps1 -InstallAutostart
+```
+
+Notes:
+
+- The script uses the folder it lives in by default.
+- Run `npm run build` once before using `npm run start`.
+- The processes run as separate hidden PowerShell processes.
 
 ### 6) Public launcher usage
 
@@ -473,9 +355,6 @@ Custom host:
 ```powershell
 .\launch-pool-printer.ps1 -BaseUrl "http://server-name:3000/public" -LaunchSecret "YOUR_SECRET"
 ```
-
-The launcher sends username + secret to `/api/public/launch` and opens `/public` only with a valid launch token.
-The username is forced to lowercase in both launcher and app normalization.
 
 ### 7) Main APIs
 
