@@ -7,11 +7,10 @@ export async function POST(request: Request) {
     const userId = (body.userId as string)?.toLowerCase();
     const pages = body.pages;
     const printerType = body.printerType;
-    const jobKey = typeof body.jobKey === "string" ? body.jobKey.trim() : "";
 
-    if (!userId || !pages || !printerType || !jobKey) {
+    if (!userId || !pages || !printerType) {
       return NextResponse.json(
-        { error: "userId, pages, printerType, and jobKey are required" },
+        { error: "userId, pages, and printerType are required" },
         { status: 400 }
       );
     }
@@ -33,12 +32,7 @@ export async function POST(request: Request) {
       .get(userId) as { userId: string; balance: number; is_free_account: number } | undefined;
 
     if (!user) {
-      return NextResponse.json({
-        allowed: false,
-        reason: "User not found or account inactive",
-        balance: 0,
-        required: 0,
-      });
+      return NextResponse.json({ allowed: false, reason: "User not found" });
     }
 
     // Free account: allow without logging or deducting
@@ -54,8 +48,6 @@ export async function POST(request: Request) {
 
     const pricePerPage = priceSetting ? parseInt(priceSetting.value, 10) : (printerType === "bw" ? 5 : 20);
     const totalCost = pricePerPage * pages;
-    const type = printerType === "bw" ? "print_bw" : "print_color";
-    const reservationMarker = `print_job:${jobKey}`;
 
     // Check balance
     if (user.balance < totalCost) {
@@ -67,36 +59,26 @@ export async function POST(request: Request) {
       });
     }
 
-    // Deduct/create atomically and deduplicate by unique spooler job key marker
+    // Deduct balance and create pending transaction in a SQL Transaction
     const reserveTransaction = db.transaction(() => {
-      const existing = db
-        .prepare(
-          "SELECT id FROM transactions WHERE description = ? AND status = 'pending' LIMIT 1",
-        )
-        .get(reservationMarker) as { id: number } | undefined;
-
-      if (existing) {
-        return { transactionId: existing.id, deduplicated: true };
-      }
-
       db.prepare("UPDATE users SET balance = balance - ? WHERE userId = ?").run(totalCost, userId);
 
+      const type = printerType === "bw" ? "print_bw" : "print_color";
       const result = db
         .prepare(
-          "INSERT INTO transactions (userId, amount, pages, type, description, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+          "INSERT INTO transactions (userId, amount, pages, type, status) VALUES (?, ?, ?, ?, 'pending')"
         )
-        .run(userId, totalCost, pages, type, reservationMarker);
+        .run(userId, totalCost, pages, type);
 
-      return { transactionId: Number(result.lastInsertRowid), deduplicated: false };
+      return result.lastInsertRowid;
     });
 
-    const reservation = reserveTransaction();
+    const transactionId = reserveTransaction();
 
     return NextResponse.json({
       allowed: true,
       isFree: false,
-      transactionId: reservation.transactionId,
-      deduplicated: reservation.deduplicated,
+      transactionId: Number(transactionId),
     });
   } catch (error) {
     console.error("Failed to reserve print:", error);
