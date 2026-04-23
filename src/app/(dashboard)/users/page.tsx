@@ -43,6 +43,8 @@ import {
   Download,
   MinusCircle,
   Trash2,
+  RotateCcw,
+  Undo2,
 } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
 import { useAppStore } from "@/lib/useAppStore";
@@ -66,6 +68,8 @@ interface Transaction {
   timestamp: string;
 }
 
+type TransactionAction = "mark_refunded" | "mark_completed";
+
 export default function UsersPage() {
   const { t, locale, formatCurrency, formatDateTime } = useI18n();
   const { selectedUserId, setSelectedUserId, clearSelectedUserId } =
@@ -84,6 +88,10 @@ export default function UsersPage() {
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeDescription, setChargeDescription] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [transactionConfirmState, setTransactionConfirmState] = useState<{
+    transaction: Transaction;
+    action: TransactionAction;
+  } | null>(null);
   const [userStateFilter, setUserStateFilter] = useState<
     "active" | "deletion_requested"
   >("active");
@@ -331,6 +339,57 @@ export default function UsersPage() {
     }
   };
 
+  const handleTransactionAction = async (
+    transactionId: number,
+    action: TransactionAction,
+  ) => {
+    try {
+      const res = await fetch("/api/transactions/cancel-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId, action }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (action === "mark_refunded") {
+          toast.success(t("toast.cancelRefundSuccess"));
+        } else {
+          toast.success(t("toast.markCompletedSuccess"));
+        }
+        if (selectedUser) {
+          fetchUserTransactions(selectedUser.userId);
+          searchUsers(searchQuery);
+          const refreshedUserRes = await fetch(
+            `/api/users?search=${encodeURIComponent(selectedUser.userId.toLowerCase())}&state=${userStateFilter}`,
+          );
+          const refreshedUsers = (await refreshedUserRes.json()) as User[];
+          const refreshed = refreshedUsers.find(
+            (u) => u.userId === selectedUser.userId,
+          );
+          if (refreshed) setSelectedUser(refreshed);
+        }
+      } else {
+        if (
+          action === "mark_completed" &&
+          data?.error === "Insufficient balance"
+        ) {
+          toast.error(t("toast.chargeInsufficientBalance"));
+        } else if (action === "mark_refunded") {
+          toast.error(t("toast.cancelRefundFailed"));
+        } else {
+          toast.error(t("toast.markCompletedFailed"));
+        }
+      }
+    } catch {
+      if (action === "mark_refunded") {
+        toast.error(t("toast.cancelRefundFailed"));
+      } else {
+        toast.error(t("toast.markCompletedFailed"));
+      }
+    }
+  };
+
   const statusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -371,6 +430,44 @@ export default function UsersPage() {
   };
 
   const isCreditTransaction = (type: string) => type === "deposit";
+
+  const actionLabel = (status: string) => {
+    if (status === "refunded") return t("jobs.markCompleted");
+    if (status === "completed") return t("jobs.refund");
+    return t("jobs.cancelRefund");
+  };
+
+  const confirmTitle = (status: string) => {
+    if (status === "refunded") return t("jobs.markCompleted");
+    return t("jobs.cancelRefund");
+  };
+
+  const confirmDescription = (tx: Transaction, action: TransactionAction) => {
+    if (action === "mark_completed") {
+      return t("jobs.confirmActionDescriptionRestoreCompleted", {
+        id: tx.id,
+        userId: tx.userId,
+      });
+    }
+
+    if (tx.status === "pending") {
+      return t("jobs.confirmActionDescriptionPendingRefund", {
+        id: tx.id,
+        userId: tx.userId,
+      });
+    }
+
+    return t("jobs.confirmActionDescriptionCompletedRefund", {
+      id: tx.id,
+      userId: tx.userId,
+    });
+  };
+
+  const actionForStatus = (status: string): TransactionAction | null => {
+    if (status === "refunded") return "mark_completed";
+    if (status === "completed" || status === "pending") return "mark_refunded";
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -753,16 +850,40 @@ export default function UsersPage() {
                                 {formatDateTime(tx.timestamp)}
                               </TableCell>
                               <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    void generateInvoicePDF(tx, locale)
-                                  }
-                                  title={t("common.downloadReceipt")}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
+                                <div className="flex w-full items-center justify-end gap-1">
+                                  {!isCreditTransaction(tx.type) &&
+                                  actionForStatus(tx.status) ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        setTransactionConfirmState({
+                                          transaction: tx,
+                                          action: actionForStatus(
+                                            tx.status,
+                                          ) as TransactionAction,
+                                        })
+                                      }
+                                      title={actionLabel(tx.status)}
+                                    >
+                                      {tx.status === "refunded" ? (
+                                        <Undo2 className="h-4 w-4" />
+                                      ) : (
+                                        <RotateCcw className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  ) : null}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      void generateInvoicePDF(tx, locale)
+                                    }
+                                    title={t("common.downloadReceipt")}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -772,6 +893,48 @@ export default function UsersPage() {
                   )}
                 </div>
               </div>
+
+              <AlertDialog
+                open={!!transactionConfirmState}
+                onOpenChange={(open) => {
+                  if (!open) setTransactionConfirmState(null);
+                }}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {transactionConfirmState
+                        ? confirmTitle(
+                            transactionConfirmState.transaction.status,
+                          )
+                        : ""}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {transactionConfirmState
+                        ? confirmDescription(
+                            transactionConfirmState.transaction,
+                            transactionConfirmState.action,
+                          )
+                        : ""}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (!transactionConfirmState) return;
+                        void handleTransactionAction(
+                          transactionConfirmState.transaction.id,
+                          transactionConfirmState.action,
+                        );
+                        setTransactionConfirmState(null);
+                      }}
+                    >
+                      {t("common.confirm")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
         </DialogContent>

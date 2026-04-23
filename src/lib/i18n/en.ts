@@ -119,6 +119,12 @@ const en: Record<TranslationKey, string> = {
   "jobs.allStatus": "All Status",
   "jobs.noTransactions": "No transactions found.",
   "jobs.cancelRefund": "Cancel & Refund",
+  "jobs.refund": "Refund",
+  "jobs.markCompleted": "Mark as completed",
+  "jobs.confirmActionTitle": "Confirm sensitive action",
+  "jobs.confirmActionDescriptionPendingRefund": "Transaction #{id} (user: {userId}) is still pending. If you continue, the job will be cancelled and any reserved amount will be credited back to the account.",
+  "jobs.confirmActionDescriptionCompletedRefund": "Transaction #{id} (user: {userId}) is already completed. If you continue, the amount will be fully refunded and credited back to the user's account.",
+  "jobs.confirmActionDescriptionRestoreCompleted": "Transaction #{id} (user: {userId}) is currently refunded. If you continue, it will be marked as completed again and the amount will be charged from the user's account again.",
   "jobs.pageOf": "Page {page} of {totalPages} ({total} total)",
 
   // Public account page
@@ -201,6 +207,8 @@ const en: Record<TranslationKey, string> = {
   "toast.userDeleteConfirm": "Request deletion for user {userId}? The user is hidden immediately and can be restored for 7 days.",
   "toast.cancelRefundSuccess": "Transaction cancelled and refunded",
   "toast.cancelRefundFailed": "Failed to cancel transaction",
+  "toast.markCompletedSuccess": "Transaction marked as completed",
+  "toast.markCompletedFailed": "Failed to mark transaction as completed",
   "toast.chargeSuccess": "Charged {amount} from {userId}. New balance: {balance}",
   "toast.chargeFailed": "Charge failed",
   "toast.chargeInvalid": "Please enter a valid positive amount.",

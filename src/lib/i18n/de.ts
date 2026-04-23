@@ -117,6 +117,12 @@ const de = {
   "jobs.allStatus": "Alle Status",
   "jobs.noTransactions": "Keine Transaktionen gefunden.",
   "jobs.cancelRefund": "Stornieren & Erstatten",
+  "jobs.refund": "Erstatten",
+  "jobs.markCompleted": "Als abgeschlossen markieren",
+  "jobs.confirmActionTitle": "Sensible Aktion bestätigen",
+  "jobs.confirmActionDescriptionPendingRefund": "Transaktion #{id} (Benutzer: {userId}) ist noch ausstehend. Wenn Sie fortfahren, wird der Auftrag storniert und ein ggf. reservierter Betrag wird dem Konto gutgeschrieben.",
+  "jobs.confirmActionDescriptionCompletedRefund": "Transaktion #{id} (Benutzer: {userId}) ist bereits abgeschlossen. Wenn Sie fortfahren, wird der Betrag vollständig erstattet und dem Benutzerkonto gutgeschrieben.",
+  "jobs.confirmActionDescriptionRestoreCompleted": "Transaktion #{id} (Benutzer: {userId}) ist aktuell erstattet. Wenn Sie fortfahren, wird sie wieder als abgeschlossen markiert und der Betrag erneut vom Benutzerkonto abgezogen.",
   "jobs.pageOf": "Seite {page} von {totalPages} ({total} gesamt)",
 
   // Public account page
@@ -199,6 +205,8 @@ const de = {
   "toast.userDeleteConfirm": "Löschung für Benutzer {userId} beantragen? Der Benutzer wird sofort ausgeblendet und kann 7 Tage lang wiederhergestellt werden.",
   "toast.cancelRefundSuccess": "Transaktion storniert und erstattet",
   "toast.cancelRefundFailed": "Fehler beim Stornieren der Transaktion",
+  "toast.markCompletedSuccess": "Transaktion als abgeschlossen markiert",
+  "toast.markCompletedFailed": "Fehler beim Markieren als abgeschlossen",
   "toast.chargeSuccess": "{amount} von {userId} abgebucht. Neues Guthaben: {balance}",
   "toast.chargeFailed": "Abbuchung fehlgeschlagen",
   "toast.chargeInvalid": "Bitte geben Sie einen gültigen positiven Betrag ein.",

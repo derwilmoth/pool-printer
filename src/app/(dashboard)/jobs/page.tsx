@@ -13,11 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -29,12 +33,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  MoreHorizontal,
   ChevronLeft,
   ChevronRight,
   Search,
   RefreshCw,
   Download,
+  RotateCcw,
+  Undo2,
 } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/generate-invoice";
 
@@ -56,6 +61,8 @@ interface Pagination {
   totalPages: number;
 }
 
+type TransactionAction = "mark_refunded" | "mark_completed";
+
 export default function JobsPage() {
   const { t, locale, formatCurrency, formatDateTime } = useI18n();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -70,6 +77,10 @@ export default function JobsPage() {
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [confirmState, setConfirmState] = useState<{
+    transaction: Transaction;
+    action: TransactionAction;
+  } | null>(null);
 
   const fetchTransactions = useCallback(
     async (page = 1) => {
@@ -108,23 +119,81 @@ export default function JobsPage() {
     fetchTransactions(1);
   }, [fetchTransactions]);
 
-  const handleCancelRefund = async (transactionId: number) => {
+  const handleTransactionAction = async (
+    transactionId: number,
+    action: TransactionAction,
+  ) => {
     try {
       const res = await fetch("/api/transactions/cancel-manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId }),
+        body: JSON.stringify({ transactionId, action }),
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(t("toast.cancelRefundSuccess"));
+        if (action === "mark_refunded") {
+          toast.success(t("toast.cancelRefundSuccess"));
+        } else {
+          toast.success(t("toast.markCompletedSuccess"));
+        }
         fetchTransactions(pagination.page);
       } else {
-        toast.error(t("toast.cancelRefundFailed"));
+        if (
+          action === "mark_completed" &&
+          data?.error === "Insufficient balance"
+        ) {
+          toast.error(t("toast.chargeInsufficientBalance"));
+        } else if (action === "mark_refunded") {
+          toast.error(t("toast.cancelRefundFailed"));
+        } else {
+          toast.error(t("toast.markCompletedFailed"));
+        }
       }
     } catch {
-      toast.error(t("toast.cancelRefundFailed"));
+      if (action === "mark_refunded") {
+        toast.error(t("toast.cancelRefundFailed"));
+      } else {
+        toast.error(t("toast.markCompletedFailed"));
+      }
     }
+  };
+
+  const actionLabel = (status: string) => {
+    if (status === "refunded") return t("jobs.markCompleted");
+    if (status === "completed") return t("jobs.refund");
+    return t("jobs.cancelRefund");
+  };
+
+  const confirmTitle = (status: string) => {
+    if (status === "refunded") return t("jobs.markCompleted");
+    return t("jobs.cancelRefund");
+  };
+
+  const confirmDescription = (tx: Transaction, action: TransactionAction) => {
+    if (action === "mark_completed") {
+      return t("jobs.confirmActionDescriptionRestoreCompleted", {
+        id: tx.id,
+        userId: tx.userId,
+      });
+    }
+
+    if (tx.status === "pending") {
+      return t("jobs.confirmActionDescriptionPendingRefund", {
+        id: tx.id,
+        userId: tx.userId,
+      });
+    }
+
+    return t("jobs.confirmActionDescriptionCompletedRefund", {
+      id: tx.id,
+      userId: tx.userId,
+    });
+  };
+
+  const actionForStatus = (status: string): TransactionAction | null => {
+    if (status === "refunded") return "mark_completed";
+    if (status === "completed" || status === "pending") return "mark_refunded";
+    return null;
   };
 
   const statusColor = (status: string) => {
@@ -326,7 +395,29 @@ export default function JobsPage() {
                     {formatDateTime(tx.timestamp)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex w-full items-center justify-end gap-1">
+                      {!isCreditTransaction(tx.type) &&
+                        actionForStatus(tx.status) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setConfirmState({
+                                transaction: tx,
+                                action: actionForStatus(
+                                  tx.status,
+                                ) as TransactionAction,
+                              })
+                            }
+                            title={actionLabel(tx.status)}
+                          >
+                            {tx.status === "refunded" ? (
+                              <Undo2 className="h-4 w-4" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -335,23 +426,6 @@ export default function JobsPage() {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      {tx.status === "pending" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleCancelRefund(tx.id)}
-                              className="text-destructive"
-                            >
-                              {t("jobs.cancelRefund")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -391,6 +465,46 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={!!confirmState}
+        onOpenChange={(open) => {
+          if (!open) setConfirmState(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmState
+                ? confirmTitle(confirmState.transaction.status)
+                : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmState
+                ? confirmDescription(
+                    confirmState.transaction,
+                    confirmState.action,
+                  )
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmState) return;
+                void handleTransactionAction(
+                  confirmState.transaction.id,
+                  confirmState.action,
+                );
+                setConfirmState(null);
+              }}
+            >
+              {t("common.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
